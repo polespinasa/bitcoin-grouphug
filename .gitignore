@@ -73,3 +73,4 @@ Cargo.lock
 
 # Go workspace file
 go.work
+.vscode/settings.json
