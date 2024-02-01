@@ -47,7 +47,7 @@ impl Group {
         /// Runs a countdown in seconds until the timeleft reaches 0 or the size of the transaction vector is equal to the maximum group size.
         /// When the group comes to an end, the group transaction is created.
         let handle = thread::spawn(move || {
-            while check_if_must_close == false {
+            while check_if_must_close() == false {
                 thread::sleep(Duration::from_secs(1));
             }
             self.create_group_transaction();
