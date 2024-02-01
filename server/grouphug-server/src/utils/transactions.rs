@@ -1,13 +1,39 @@
 //! Functions related to the transactions validation and manipulation.
 
 
-use bdk::bitcoin::{
-    Transaction,
-    consensus::encode::deserialize,
-};
+use bdk::bitcoin::OutPoint;
+use bdk::bitcoin::{Transaction, consensus::encode::deserialize};
 use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
+
+pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
+    // Given an input from a certain transaction returns the value of the pointed UTXO.
+    // If no UTXO is recieved back, the value returned is 0.
+
+    println!("Connecting to the node");
+    // Connect to Electrum node
+    let client = Client::new("umbrel.local:50001").unwrap();
+    let blockchain = ElectrumBlockchain::from(client);
+    println!("Connected to the node");
+
+    let tx_result = blockchain.get_tx(&utxo.txid);
+
+    match tx_result {
+        Ok(Some(tx)) => {
+            return tx.output[utxo.vout as usize].value as f32;
+        },
+        Ok(None) => {
+            println!("Previous transaction query returned NONE");
+            return 0.0;
+        }
+        Err(_) => {
+            println!("There is an error retrieving previous transaction");
+            return 0.0;
+        }
+
+    }
+}
 
 pub fn previous_utxo_spent(tx: &Transaction) -> bool {
     // Validates that the utxo pointed to by the transaction input has not been spent.
@@ -64,7 +90,7 @@ pub fn get_num_inputs_and_outputs(tx: &Transaction) -> (usize, usize) {
     return (tx.input.len(), tx.output.len());
 }
 
-pub fn validate_tx_query(_min_fee_rate: f32, tx_hex: &str ) -> bool {
+pub fn validate_tx_query(min_fee_rate: f32, tx_hex: &str ) -> bool {
     // Validate that a given transaction (in hex) is valid according to the rules.
     // Rules:
     //  - Should only be 1 input.
@@ -76,17 +102,29 @@ pub fn validate_tx_query(_min_fee_rate: f32, tx_hex: &str ) -> bool {
 
 
     // Only one input
-    if get_num_inputs_and_outputs(&tx) != (1,1) {
-        println!("Number of inputs and outputs must be 1");
+    let num_inputs_and_outputs: (usize, usize) = get_num_inputs_and_outputs(&tx);
+    if  num_inputs_and_outputs != (1,1) {
+        println!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
+        return false;
+    }
+    
+
+    let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[0].previous_output);
+    let real_fee_rate: f32 = (previous_utxo_value - tx.output[0].value as f32)/tx.vsize() as f32;
+    if min_fee_rate > real_fee_rate {
+        println!("Cheating dettected on the fee rate. Fee rate declarated {} - Fee rate found {}", min_fee_rate, real_fee_rate);
         return false;
     }
 
     // Output not spent
-    return previous_utxo_spent(&tx);
+    if !previous_utxo_spent(&tx) {
+        println!("Double spending dettected");
+        return false;
+    }
 
 
 
-    //return true;
+    return true;
 
 }
 
@@ -140,5 +178,14 @@ mod tests {
     }
     */
 
+    #[test]
+    fn test_validate_tx_query_fee_to_low() {
+        let fee_rate: f32 = 70.0;
+    
+        //tx should be rejected as real fee is below the declarated one.
+        //tx id: d11251712c854dea5a05aed75c6d9d81aa3a51088d8031c5ecaa28afd2b277d5
+        let tx_hex = "0100000000010109abff3c9bd88810da1dc5583e82834b612364c074799bfbbd1750bd29858888000000000001000000010f2700000000000022512039112e42819fe026c6c1406fa5c06646435ae2669bdc5b874234f72215c489fc03409ce5d98d03b32abc4af7dcc473811ff93e4f4e88e8ac0cf4b86831f491849f3db17fb916e732d9a84bc249a787d7a2c88dda6c0e5581faed9bd49b305a0ecb976d206af366cc2af6b6068e737543a26044363897cd492d58fc7055bdeb8eb494873dac00630461746f6d03646d743ea16461726773a46474696d651a65b9e44c656e6f6e6365190c9868626974776f726b636538383838386b6d696e745f7469636b657268696e66696e6974796821c16af366cc2af6b6068e737543a26044363897cd492d58fc7055bdeb8eb494873d00000000";
+        assert_eq!(transactions::validate_tx_query(fee_rate, tx_hex), false);
+    }
 
 }
