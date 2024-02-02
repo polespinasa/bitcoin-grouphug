@@ -1,7 +1,7 @@
 //! Functions related to the transactions validation and manipulation.
 
 
-use bdk::bitcoin::{OutPoint};
+use bdk::bitcoin::OutPoint;
 use bdk::bitcoin::{Transaction, consensus::encode::deserialize};
 use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
