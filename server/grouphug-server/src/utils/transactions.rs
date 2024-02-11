@@ -10,10 +10,10 @@ use hex::decode as hex_decode;
 // Electrum Server endpoints
 
 //Mainnet
-const MAINNET_ELECTRUM_SERVER_ENDPOINT: &str = "electrum.blockstream.info:50001";
+const MAINNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.info:50001";
 
 //Testnet  
-const TESTNET_ELECTRUM_SERVER_ENDPOINT: &str = "electrum.blockstream.info:60002";
+const TESTNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.info:60002";
 
 pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // Given an input from a certain transaction returns the value of the pointed UTXO.
@@ -60,11 +60,10 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
     match tx_result {
         Ok(Some(tx)) => {
             // validate if the output has been spent
-            //let spent = tx.output[outpoint.vout as usize].script_pubkey.is_provably_unspendable();
-            println!("I'm here");
+
             let utxo_script_pubkey = &tx.output[outpoint.vout as usize].script_pubkey;
             let utxo_list = blockchain.script_list_unspent(&utxo_script_pubkey);
-            println!("I'm also here");
+
             match utxo_list {
                 Ok(returned_utxo_list) => {
                     if returned_utxo_list.len() > 0 {
