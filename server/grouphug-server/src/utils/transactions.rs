@@ -7,13 +7,21 @@ use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
+// Electrum Server endpoints
+
+//Mainnet
+const MAINNET_ELECTRUM_SERVER_ENDPOINT: &str = "electrum.blockstream.info:50001";
+
+//Testnet  
+const TESTNET_ELECTRUM_SERVER_ENDPOINT: &str = "electrum.blockstream.info:60002";
+
 pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // Given an input from a certain transaction returns the value of the pointed UTXO.
     // If no UTXO is recieved back, the value returned is 0.
 
     println!("Connecting to the node");
     // Connect to Electrum node
-    let client = Client::new("umbrel.local:50001").unwrap();
+    let client = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
     let blockchain = ElectrumBlockchain::from(client);
     println!("Connected to the node");
 
@@ -40,7 +48,7 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
 
     println!("Connecting to the node");
     // Connect to Electrum node
-    let client = Client::new("umbrel.local:50001").unwrap();
+    let client = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
     let blockchain = ElectrumBlockchain::from(client);
     println!("Connected to the node");
 
@@ -143,6 +151,11 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(min_fee_rate: f32, tx_
     
 
     let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[0].previous_output);
+    if previous_utxo_value == 0.0 {
+        println!("There's an error loading the previous utxo value");
+        return false;
+    }
+
     let real_fee_rate: f32 = (previous_utxo_value - tx.output[0].value as f32)/tx.vsize() as f32;
     if min_fee_rate > real_fee_rate {
         println!("Cheating dettected on the fee rate. Fee rate declarated {} - Fee rate found {}", min_fee_rate, real_fee_rate);

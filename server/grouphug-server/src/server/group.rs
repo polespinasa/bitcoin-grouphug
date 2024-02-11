@@ -13,7 +13,7 @@ use bdk::electrum_client::{Client, ElectrumApi};
 
 
 /// Time to wait until closing a group if it is not fulfilled (in seconds).
-const TIMELEFT: u32 = 43200;
+const MAX_TIME: u32 = 43200;
 
 /// Maximum number of participants of each group.
 const MAX_SIZE: u8 = 20;
@@ -31,7 +31,7 @@ impl Group {
     fn new(id: u32) -> Self {
         Group {
             id,
-            timeleft: TIMELEFT,
+            timeleft: MAX_TIME,
             max_size: MAX_SIZE,
             transactions: Vec::new(),
             transaction_group: Transaction {
