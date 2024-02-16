@@ -7,13 +7,7 @@ use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
-// Electrum Server endpoints
-
-//Mainnet
-const MAINNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.info:50001";
-
-//Testnet  
-const TESTNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.info:60002";
+use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT, MAINNET_ELECTRUM_SERVER_ENDPOINT};
 
 pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // Given an input from a certain transaction returns the value of the pointed UTXO.
