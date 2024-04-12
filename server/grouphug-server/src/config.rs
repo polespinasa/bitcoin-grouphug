@@ -15,3 +15,7 @@ pub const MAX_TIME: usize = 300;
 
 /// Maximum number of participants of each group.
 pub const MAX_SIZE: usize = 3;
+
+
+/// Dust limit in sats
+pub const DUST_LIMIT: u64 = 1000;

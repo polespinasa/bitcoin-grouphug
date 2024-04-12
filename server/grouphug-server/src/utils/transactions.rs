@@ -10,7 +10,7 @@ use bdk::bitcoin::{Transaction,
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
-use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT, MAINNET_ELECTRUM_SERVER_ENDPOINT};
+use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT, MAINNET_ELECTRUM_SERVER_ENDPOINT, DUST_LIMIT};
 
 pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // Given an input from a certain transaction returns the value of the pointed UTXO.
@@ -97,6 +97,12 @@ pub fn check_absolute_locktime(tx: &Transaction) -> bool {
     return tx.is_absolute_timelock_satisfied(height_expected, time_expected);
 }
 
+pub fn check_dust_limit(tx: &Transaction) -> bool {
+    // Return true or false if the tx value is >= than the DUST_LIMIT.
+    println!("Output value {}: ", tx.output[0].value);
+    return tx.output[0].value >= DUST_LIMIT;
+}
+
 pub fn check_tx_version(tx: &Transaction) -> bool {
     // Return ture or false if the tx version is 2
     println!("{}", tx.version);
@@ -174,6 +180,14 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     if !abs_lock_time {
         println!("Absolute locktime is not 0");
         let msg = String::from("Absolute locktime is not 0");
+        return (false,msg);
+    }
+
+    let dust_limit_valid: bool = check_dust_limit(&tx);
+    if !dust_limit_valid {
+        println!("The transaction value is under the dust limit {}", DUST_LIMIT);
+        let msg = format!("The transaction value is under the dust limit {}", DUST_LIMIT);
+        //let msg = String::from("The transaction value is under the dust limit {}", DUST_LIMIT);
         return (false,msg);
     }
 
