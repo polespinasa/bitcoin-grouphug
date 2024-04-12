@@ -81,7 +81,7 @@ fn handle_client(mut stream: TcpStream) {
             //"C" => handle_c(),
             _ => println!("Command not known: {}", command),
         }
-        stream.write(&buffer[0..nbytes]).unwrap();
+        //stream.write(&buffer[0..nbytes]).unwrap();
     }
 }
 
