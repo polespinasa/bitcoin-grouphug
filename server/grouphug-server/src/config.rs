@@ -14,4 +14,4 @@ pub const TESTNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.i
 pub const MAX_TIME: usize = 300;
 
 /// Maximum number of participants of each group.
-pub const MAX_SIZE: usize = 8;
+pub const MAX_SIZE: usize = 3;

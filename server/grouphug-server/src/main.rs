@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 
 use crate::server::group::Group;
+use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_pay;
 
 
 // GroupHug are from the Group class 
@@ -20,7 +21,7 @@ type GroupHug = Group;
 static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<GroupHug>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
 
 
-fn handle_addtx(arg: &str) {
+fn handle_addtx(arg: &str, mut stream: TcpStream) {
 
     let group_index;
     if GLOBAL_GROUPS.lock().unwrap().len() != 1 {
@@ -35,9 +36,17 @@ fn handle_addtx(arg: &str) {
     // Before adding the tx ensures that 
     println!("La tx és {}!", arg);
 
-    let mut groups = GLOBAL_GROUPS.lock().unwrap();
-    groups[group_index].add_tx(arg);
-    
+    // Validate that the tx has the correct format
+    let (valid, msg) = validate_tx_query_one_to_one_single_anyone_can_pay(arg);
+    if valid {
+        let mut groups = GLOBAL_GROUPS.lock().unwrap();
+        groups[group_index].add_tx(arg);
+        stream.write(b"Ok\n").unwrap();
+    } else {
+        // here should send an error message
+        let error_msg = format!("Error: {}\n", msg);
+        stream.write(error_msg.as_bytes()).unwrap();
+    }
 
 }
 /*
@@ -67,7 +76,7 @@ fn handle_client(mut stream: TcpStream) {
         let (command, arg) = (command_parts[0], command_parts[1]);
         //let command = command_string.trim();
         match command {
-            "add_tx" => handle_addtx(arg),
+            "add_tx" => handle_addtx(arg, stream.try_clone().unwrap()),
             //"B" => handle_b(),
             //"C" => handle_c(),
             _ => println!("Command not known: {}", command),

@@ -2,8 +2,11 @@
 
 
 use bdk::bitcoin::OutPoint;
-use bdk::bitcoin::{Transaction, consensus::encode::deserialize};
-use bdk::blockchain::{ElectrumBlockchain, GetTx};
+use bdk::bitcoin::{Transaction,
+    consensus::encode::deserialize,
+    blockdata::locktime::absolute::{Height, Time}};
+
+    use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
@@ -87,6 +90,13 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
 
 }
 
+pub fn check_absolute_locktime(tx: &Transaction) -> bool {
+    // Return the number of inputs and outputs from a given transaction in a tuple
+    let height_expected = Height::from_consensus(0).unwrap();
+    let time_expected = Time::MIN;
+    return !tx.is_absolute_timelock_satisfied(height_expected, time_expected);
+}
+
 pub fn get_num_inputs_and_outputs(tx: &Transaction) -> (usize, usize) {
     // Return the number of inputs and outputs from a given transaction in a tuple
     return (tx.input.len(), tx.output.len());
@@ -122,53 +132,74 @@ pub fn check_sighash_single_anyone_can_pay(tx: &Transaction) -> bool {
     return true;
 }
 
-pub fn validate_tx_query_one_to_one_single_anyone_can_pay(min_fee_rate: f32, tx_hex: &str ) -> bool {
+//pub fn validate_tx_query_one_to_one_single_anyone_can_pay(min_fee_rate: f32, tx_hex: &str ) -> bool {
+pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (bool, String) {
     // Validate that a given transaction (in hex) is valid according to the rules.
     // Rules:
     //  - Should only be 1 input.
     //  - Should only be 1 output.
-    //  - Tx fee should be bigger or equal than the min_fee_rate
     //  - The input cannot be spent before must be and UTXO.
-    //  - Signature must be SIGHASH_SINGLE | ANYONECANPAY
+    //  - Signature must be SIGHASH_SINGLE | ANYONECANPAY.
+    //  - Should have absolute locktime to 0.
+
+    println!("Deserializing");
+    let tx_hex_decoded = match hex_decode(tx_hex) {
+        Ok(decoded) => decoded,
+        Err(_) => return (false, String::from("Error decoding hex")),
+    };
+    let tx: Transaction = match deserialize(&tx_hex_decoded) {
+        Ok(transaction) => transaction,
+        Err(_) => return (false, String::from("Error deserializing transaction")),
+    };
+    //let tx: Transaction = deserialize(&hex_decode(tx_hex).unwrap()).unwrap();
 
 
-    println!("Deselializing");
-    let tx: Transaction = deserialize(&hex_decode(tx_hex).unwrap()).unwrap();
-
+    
 
     // Only one input
     let num_inputs_and_outputs: (usize, usize) = get_num_inputs_and_outputs(&tx);
     if  num_inputs_and_outputs != (1,1) {
         println!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
-        return false;
+        let msg = format!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
+        return (false, msg);
     }
     
+    let abs_lock_time: bool = check_absolute_locktime(&tx);
+    if abs_lock_time {
+        println!("Absolute locktime is not 0");
+        let msg = String::from("Absolute locktime is not 0");
+        return (false,msg);
+    }
 
     let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[0].previous_output);
     if previous_utxo_value == 0.0 {
         println!("There's an error loading the previous utxo value");
-        return false;
+        let msg = String::from("There's an error loading the previous utxo value");
+        return (false,msg);
     }
-
+    /*
     let real_fee_rate: f32 = (previous_utxo_value - tx.output[0].value as f32)/tx.vsize() as f32;
     if min_fee_rate > real_fee_rate {
         println!("Cheating dettected on the fee rate. Fee rate declarated {} - Fee rate found {}", min_fee_rate, real_fee_rate);
         return false;
     }
+    */
     
     // The signature type must be SIGHASH_SINGLE |ANYONECANPAY
     if !check_sighash_single_anyone_can_pay(&tx) {
         println!("Wrong sighash used");
-        return false;
+        let msg = String::from("Wrong sighash used");
+        return (false,msg);
     }
 
     // Output not spent
     if !previous_utxo_spent(&tx) {
-        println!("Double spending dettected");
-        return false;
+        println!("Double spending detected");
+        let msg = String::from("Double spending detected");
+        return (false,msg);
     }
 
-    return true;
+    return (true, String::from("Ok"));
 
 }
 
