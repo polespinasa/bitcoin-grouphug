@@ -4,14 +4,96 @@ mod server;
 
 use std::time::Duration;
 use std::thread;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::str;
+use std::sync::{Arc, Mutex};
+use once_cell::sync::Lazy;
 
 use crate::server::group::Group;
 
 
+// GroupHug are from the Group class 
+type GroupHug = Group;
+
+// Array with Group list
+static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<GroupHug>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
+
+
+fn handle_addtx(arg: &str) {
+
+    let group_index;
+    if GLOBAL_GROUPS.lock().unwrap().len() != 1 {
+        let first_group = Group::new(0);
+        let mut groups = GLOBAL_GROUPS.lock().unwrap();
+        groups.push(first_group);
+        group_index = groups.len() - 1; // Index of the newly added group
+    } else {
+        group_index = 0;
+    }
+
+    // Before adding the tx ensures that 
+    println!("La tx és {}!", arg);
+
+    let mut groups = GLOBAL_GROUPS.lock().unwrap();
+    groups[group_index].add_tx(arg);
+    
+
+}
+/*
+fn handle_b() {
+    println!("Has rebut la comanda B!");
+}
+
+fn handle_c() {
+    println!("Has rebut la comanda C!");
+}
+*/
+
+fn handle_client(mut stream: TcpStream) {
+    let mut buffer = [0; 512];
+    loop {
+        let nbytes = stream.read(&mut buffer).unwrap();
+        if nbytes == 0 {
+            return;
+        }
+
+        let command_string = String::from_utf8(buffer[0..nbytes].to_vec()).unwrap();
+        let command_parts: Vec<&str> = command_string.trim().split_whitespace().collect();
+        if command_parts.len() != 2 {
+            println!("Invalid command: {}", command_string);
+            continue;
+        }
+        let (command, arg) = (command_parts[0], command_parts[1]);
+        //let command = command_string.trim();
+        match command {
+            "add_tx" => handle_addtx(arg),
+            //"B" => handle_b(),
+            //"C" => handle_c(),
+            _ => println!("Command not known: {}", command),
+        }
+        stream.write(&buffer[0..nbytes]).unwrap();
+    }
+}
+
 fn main() {
     
-    let mut first_group = Group::new(0);
-
+    let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    for stream in listener.incoming(){
+        match stream {
+            Ok(stream) => {
+                thread::spawn(|| {
+                    handle_client(stream);
+                });
+            }
+            Err(e) => {
+                eprintln!("Unable to connect: {}", e);
+            }
+        }
+    }
+    
+    
+    /* This was the first test
     let tx1: &str = "02000000000101ac47d4326964306dddf3e6225d8667e2f62de9d96fe99b91580f16e29c96695c0000000000fdffffff019e24e51700000000160014ed1fb4a7ca03a2a03f065c0720e4af27c786fb580247304402200a43adf4c17b80453a9679dc4c0587f874c14692461beff5aad12e9cbe78851302204f84c17ccf0b9f77306c42dc8fb4d64f6d407a978d87d4d096845b3611e4698c8321036a65b47b4074d1cdf20cc3ed2a2d440e36f805798267d1c491a01d4efde9fc1100000000";
     let tx2: &str = "02000000000101ac47d4326964306dddf3e6225d8667e2f62de9d96fe99b91580f16e29c96695c0100000000fdffffff0192e0f50500000000160014ed1fb4a7ca03a2a03f065c0720e4af27c786fb580247304402202fac06913e02844b5deb87d7be9be21bbcca09ed2a953a9bdf0e61611682292e022063ecbed39076e0209573d907b8c13f3b4a3d9bb7753c257e8aa32b37855c89c58321036a65b47b4074d1cdf20cc3ed2a2d440e36f805798267d1c491a01d4efde9fc1100000000";
     let tx3: &str = "02000000000101ac47d4326964306dddf3e6225d8667e2f62de9d96fe99b91580f16e29c96695c0200000000fdffffff0192e0f50500000000160014ed1fb4a7ca03a2a03f065c0720e4af27c786fb5802473044022040630b74abe00c72a9c1cad6a725a6fbe2c583f1c1d57909a6d96d2768a62d430220655ceb02a9c3d99fdbfbb569ebe2f6b88dd0f8166f98012621f7d613e94fc4658321036a65b47b4074d1cdf20cc3ed2a2d440e36f805798267d1c491a01d4efde9fc1100000000";
@@ -31,7 +113,7 @@ fn main() {
     first_group.add_tx(tx8);
 
     //result: efb8494cbacd70d5d55ac2fb0194777fec9d1e58de96a4754f7c31b5fa807c2a
-
+    */
 
     println!("Wellcome to the bitcoin group hug!!");
 }
