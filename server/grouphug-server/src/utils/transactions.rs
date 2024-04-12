@@ -91,10 +91,16 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
 }
 
 pub fn check_absolute_locktime(tx: &Transaction) -> bool {
-    // Return the number of inputs and outputs from a given transaction in a tuple
+    // Return true or false depending if the absolute locktime is 0.
     let height_expected = Height::from_consensus(0).unwrap();
     let time_expected = Time::MIN;
-    return !tx.is_absolute_timelock_satisfied(height_expected, time_expected);
+    return tx.is_absolute_timelock_satisfied(height_expected, time_expected);
+}
+
+pub fn check_tx_version(tx: &Transaction) -> bool {
+    // Return ture or false if the tx version is 2
+    println!("{}", tx.version);
+    return tx.version == 2;
 }
 
 pub fn get_num_inputs_and_outputs(tx: &Transaction) -> (usize, usize) {
@@ -165,10 +171,17 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     }
     
     let abs_lock_time: bool = check_absolute_locktime(&tx);
-    if abs_lock_time {
+    if !abs_lock_time {
         println!("Absolute locktime is not 0");
         let msg = String::from("Absolute locktime is not 0");
         return (false,msg);
+    }
+
+    let tx_version_correct: bool = check_tx_version(&tx);
+    if !tx_version_correct{
+        println!("Tx version is not 2");
+        let msg = String::from("Tx version is not 2");
+        return (false, msg);
     }
 
     let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[0].previous_output);
