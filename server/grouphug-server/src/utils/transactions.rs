@@ -147,7 +147,7 @@ pub fn check_sighash_single_anyone_can_pay(tx: &Transaction) -> bool {
 }
 
 //pub fn validate_tx_query_one_to_one_single_anyone_can_pay(min_fee_rate: f32, tx_hex: &str ) -> bool {
-pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (bool, String) {
+pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (bool, String, f32) {
     // Validate that a given transaction (in hex) is valid according to the rules.
     // Rules:
     //  - Should only be 1 input.
@@ -155,34 +155,35 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     //  - The input cannot be spent before must be and UTXO.
     //  - Signature must be SIGHASH_SINGLE | ANYONECANPAY.
     //  - Should have absolute locktime to 0.
-
+    //  - Fee rate should be bigger than 1.01sat/vb
+    
+    
+    let mut real_fee_rate: f32 = 0.0;
+    
     println!("Deserializing");
     let tx_hex_decoded = match hex_decode(tx_hex) {
         Ok(decoded) => decoded,
-        Err(_) => return (false, String::from("Error decoding hex")),
+        Err(_) => return (false, String::from("Error decoding hex"), real_fee_rate),
     };
     let tx: Transaction = match deserialize(&tx_hex_decoded) {
         Ok(transaction) => transaction,
-        Err(_) => return (false, String::from("Error deserializing transaction")),
+        Err(_) => return (false, String::from("Error deserializing transaction"), real_fee_rate),
     };
     //let tx: Transaction = deserialize(&hex_decode(tx_hex).unwrap()).unwrap();
-
-
     
-
     // Only one input
     let num_inputs_and_outputs: (usize, usize) = get_num_inputs_and_outputs(&tx);
     if  num_inputs_and_outputs != (1,1) {
         println!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
         let msg = format!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
-        return (false, msg);
+        return (false, msg, real_fee_rate);
     }
     
     let abs_lock_time: bool = check_absolute_locktime(&tx);
     if !abs_lock_time {
         println!("Absolute locktime is not 0");
         let msg = String::from("Absolute locktime is not 0");
-        return (false,msg);
+        return (false,msg, real_fee_rate);
     }
 
     let dust_limit_valid: bool = check_dust_limit(&tx);
@@ -190,45 +191,49 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
         println!("The transaction value is under the dust limit {}", DUST_LIMIT);
         let msg = format!("The transaction value is under the dust limit {}", DUST_LIMIT);
         //let msg = String::from("The transaction value is under the dust limit {}", DUST_LIMIT);
-        return (false,msg);
+        return (false,msg, real_fee_rate);
     }
 
     let tx_version_correct: bool = check_tx_version(&tx);
     if !tx_version_correct{
         println!("Tx version is not 2");
         let msg = String::from("Tx version is not 2");
-        return (false, msg);
+        return (false, msg, real_fee_rate);
     }
 
+    
     let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[0].previous_output);
     if previous_utxo_value == 0.0 {
         println!("There's an error loading the previous utxo value");
         let msg = String::from("There's an error loading the previous utxo value");
-        return (false,msg);
+        return (false,msg, real_fee_rate);
+    } else{
+        real_fee_rate = (previous_utxo_value - tx.output[0].value as f32)/tx.vsize() as f32;
     }
-    /*
-    let real_fee_rate: f32 = (previous_utxo_value - tx.output[0].value as f32)/tx.vsize() as f32;
-    if min_fee_rate > real_fee_rate {
-        println!("Cheating dettected on the fee rate. Fee rate declarated {} - Fee rate found {}", min_fee_rate, real_fee_rate);
-        return false;
+
+    if real_fee_rate <= 1.01 {
+        println!("Fee bellow 1 sat/vb. Fee rate found {}", real_fee_rate);
+        let msg = format!("Fee bellow 1 sat/vb. Fee rate found {}", real_fee_rate);
+        return (false,msg, real_fee_rate);
     }
-    */
     
     // The signature type must be SIGHASH_SINGLE |ANYONECANPAY
     if !check_sighash_single_anyone_can_pay(&tx) {
         println!("Wrong sighash used");
         let msg = String::from("Wrong sighash used");
-        return (false,msg);
+        return (false,msg, real_fee_rate);
     }
 
     // Output not spent
     if !previous_utxo_spent(&tx) {
         println!("Double spending detected");
         let msg = String::from("Double spending detected");
-        return (false,msg);
+        return (false,msg, real_fee_rate);
     }
 
-    return (true, String::from("Ok"));
+    
+    
+    return (true, String::from("Ok"), real_fee_rate);
 
 }
 

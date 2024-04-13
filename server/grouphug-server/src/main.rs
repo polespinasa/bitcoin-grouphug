@@ -11,50 +11,58 @@ use once_cell::sync::Lazy;
 
 use crate::server::group::Group;
 use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_pay;
-
+use crate::config::FEE_RANGE;
 
 // GroupHug are from the Group class 
 type GroupHug = Group;
 
 // Array with Group list
+//static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<(GroupHug, f32)>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
 static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<GroupHug>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
 
-
-fn handle_addtx(arg: &str, mut stream: TcpStream) {
-
-    let group_index;
-    if GLOBAL_GROUPS.lock().unwrap().len() != 1 {
-        let first_group = Group::new(0);
-        let mut groups = GLOBAL_GROUPS.lock().unwrap();
-        groups.push(first_group);
-        group_index = groups.len() - 1; // Index of the newly added group
-    } else {
-        group_index = 0;
-    }
-
-    // Before adding the tx ensures that 
-    println!("La tx és {}!", arg);
+fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
     // Validate that the tx has the correct format
-    let (valid, msg) = validate_tx_query_one_to_one_single_anyone_can_pay(arg);
-    if valid {
-        let mut groups = GLOBAL_GROUPS.lock().unwrap();
-        groups[group_index].add_tx(arg);
-        stream.write(b"Ok\n").unwrap();
-    } else {
-        // here should send an error message
+    let (valid, msg, fee_rate) = validate_tx_query_one_to_one_single_anyone_can_pay(transaction);
+
+    if !valid {
+        // here should send an error message as the transaction has an invalid format
         let error_msg = format!("Error: {}\n", msg);
         stream.write(error_msg.as_bytes()).unwrap();
+        return
     }
+
+    // Calculate the group fee rate.
+    let expected_group_id = ((fee_rate + FEE_RANGE - 1.0) / FEE_RANGE) * FEE_RANGE;
+
+    // Unlock the GLOBAL_GROUPS variable
+    let mut groups = GLOBAL_GROUPS.lock().unwrap();
+
+    // Search for the group corresponing to the transaction fee rate
+    let group = groups.iter_mut().find(|g| g.fee_rate == expected_group_id);
+
+    match group {
+        Some(group) => {
+            println!("Tx added to group with fee_rate {}", group.fee_rate);
+            group.add_tx(transaction);
+        },
+        None => {
+            // There is no group for this fee rate so we create one
+            let new_group = Group::new(fee_rate);
+            new_group.add_tx(transaction);
+            println!("New group created with fee_rate {}", new_group.fee_rate);
+            groups.push(new_group);
+            println!("Tx added to the new group");
+        }
+    }
+ 
+    //println!("La tx és {}!", transaction);
+    return;
 
 }
 /*
 fn handle_b() {
     println!("Has rebut la comanda B!");
-}
-
-fn handle_c() {
-    println!("Has rebut la comanda C!");
 }
 */
 
@@ -77,16 +85,15 @@ fn handle_client(mut stream: TcpStream) {
         match command {
             "add_tx" => handle_addtx(arg, stream.try_clone().unwrap()),
             //"B" => handle_b(),
-            //"C" => handle_c(),
             _ => println!("Command not known: {}", command),
         }
-        //stream.write(&buffer[0..nbytes]).unwrap();
     }
 }
 
 fn main() {
     
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
+    println!("Server running on 127.0.0.1:7878");
     for stream in listener.incoming(){
         match stream {
             Ok(stream) => {
@@ -123,5 +130,4 @@ fn main() {
     //result: efb8494cbacd70d5d55ac2fb0194777fec9d1e58de96a4754f7c31b5fa807c2a
     */
 
-    println!("Wellcome to the bitcoin group hug!!");
 }

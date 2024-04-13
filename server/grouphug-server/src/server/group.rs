@@ -20,7 +20,7 @@ use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT,
 };
 
 pub struct Group {
-    id: u32,
+    pub fee_rate: f32,
     transactions: Vec<(TxIn, TxOut)>,
     transaction_group: Transaction,
 
@@ -28,9 +28,9 @@ pub struct Group {
 
 
 impl Group {
-    pub fn new(id: u32) -> Self {
+    pub fn new(fee_rate: f32) -> Self {
         Group {
-            id,
+            fee_rate,
             transactions: Vec::new(),
             transaction_group: Transaction {
                 version: 2,
@@ -95,7 +95,7 @@ impl Group {
 
         match txid {
             Ok(id) => {
-                println!("Group {} closed! Transaction broadcasted with TXID: {}", self.id, id);
+                println!("Group {}sat/vb closed! Transaction broadcasted with TXID: {}", self.fee_rate, id);
                 return true;
             },
             Err(e) => {
