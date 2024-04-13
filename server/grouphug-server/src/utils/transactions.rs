@@ -10,7 +10,9 @@ use bdk::bitcoin::{Transaction,
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
-use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT, MAINNET_ELECTRUM_SERVER_ENDPOINT, DUST_LIMIT};
+use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT,
+    //MAINNET_ELECTRUM_SERVER_ENDPOINT,
+    DUST_LIMIT};
 
 pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // Given an input from a certain transaction returns the value of the pointed UTXO.

@@ -13,7 +13,11 @@ use bdk::bitcoin::{
 use bdk::electrum_client::{Client, ElectrumApi};
 
 
-use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT, MAINNET_ELECTRUM_SERVER_ENDPOINT, MAX_SIZE, MAX_TIME};
+use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT,
+    //MAINNET_ELECTRUM_SERVER_ENDPOINT,
+    MAX_SIZE,
+    //MAX_TIME
+};
 
 pub struct Group {
     id: u32,

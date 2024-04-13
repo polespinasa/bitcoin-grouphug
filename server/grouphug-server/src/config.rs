@@ -1,7 +1,7 @@
 // Electrum Server endpoints
 
 //Mainnet
-pub const MAINNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.info:50001";
+//pub const MAINNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.info:50001";
 
 //Testnet  
 pub const TESTNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.info:60002";
@@ -11,7 +11,7 @@ pub const TESTNET_ELECTRUM_SERVER_ENDPOINT: &str = "ssl://electrum.blockstream.i
 
 /// Time to wait until closing a group if it is not fulfilled (in seconds).
 //5min -> 300 | 12h -> 43200
-pub const MAX_TIME: usize = 300;
+//pub const MAX_TIME: usize = 300;
 
 /// Maximum number of participants of each group.
 pub const MAX_SIZE: usize = 3;

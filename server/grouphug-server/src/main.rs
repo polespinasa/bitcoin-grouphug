@@ -2,7 +2,6 @@ mod utils;
 mod config;
 mod server;
 
-use std::time::Duration;
 use std::thread;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
