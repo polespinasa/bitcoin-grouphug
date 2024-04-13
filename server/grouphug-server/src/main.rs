@@ -33,32 +33,37 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
     }
 
     // Calculate the group fee rate.
-    let expected_group_id = ((fee_rate + FEE_RANGE - 1.0) / FEE_RANGE) * FEE_RANGE;
+    let expected_group_fee = ((fee_rate / FEE_RANGE).floor() * FEE_RANGE) as f32;
 
     // Unlock the GLOBAL_GROUPS variable
     let mut groups = GLOBAL_GROUPS.lock().unwrap();
 
     // Search for the group corresponing to the transaction fee rate
-    let group = groups.iter_mut().find(|g| g.fee_rate == expected_group_id);
+    let group = groups.iter_mut().find(|g| g.fee_rate == expected_group_fee);
 
+    let mut close_group = false;
     match group {
         Some(group) => {
+            //The group already exist so we add the tx to that group
+            close_group = group.add_tx(transaction);
             println!("Tx added to group with fee_rate {}", group.fee_rate);
-            group.add_tx(transaction);
         },
         None => {
             // There is no group for this fee rate so we create one
-            let new_group = Group::new(fee_rate);
-            new_group.add_tx(transaction);
+            let mut new_group = Group::new(expected_group_fee);
+            close_group = new_group.add_tx(transaction);
             println!("New group created with fee_rate {}", new_group.fee_rate);
             groups.push(new_group);
             println!("Tx added to the new group");
         }
     }
- 
-    //println!("La tx és {}!", transaction);
-    return;
 
+    if close_group {
+        groups.retain(|g| g.fee_rate != expected_group_fee);
+        println!("Group with fee_rate {} removed", expected_group_fee);
+    }
+    
+    return;
 }
 /*
 fn handle_b() {

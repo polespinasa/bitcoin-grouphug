@@ -43,7 +43,7 @@ impl Group {
     }
 
 
-    pub fn add_tx(&mut self, tx_hex: &str) {
+    pub fn add_tx(&mut self, tx_hex: &str) -> bool {
         // tx_hex must be a valid transaction for this group (Checks must be done before)
         // add the transaction to the group
 
@@ -53,7 +53,9 @@ impl Group {
         
         if self.transactions.len() == MAX_SIZE {
             self.close_group();
+            return true;
         }
+        return false;
     }
 
 
