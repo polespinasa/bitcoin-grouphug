@@ -42,6 +42,10 @@ impl Group {
         }
     }
 
+    pub fn contains_txin(&self, txin: &TxIn) -> bool {
+        self.transactions.iter().any(|(t, _)| t.previous_output == txin.previous_output)
+    }
+    
 
     pub fn add_tx(&mut self, tx_hex: &str) -> bool {
         // tx_hex must be a valid transaction for this group (Checks must be done before)

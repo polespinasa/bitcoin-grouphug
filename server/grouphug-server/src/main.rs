@@ -8,7 +8,8 @@ use std::net::{TcpListener, TcpStream};
 use std::str;
 use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
-
+use hex::decode as hex_decode;
+use bdk::bitcoin::{Transaction,consensus::encode::deserialize};
 use crate::server::group::Group;
 use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_pay;
 use crate::config::FEE_RANGE;
@@ -20,6 +21,32 @@ type GroupHug = Group;
 //static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<(GroupHug, f32)>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
 static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<GroupHug>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
 
+fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
+    let tx_hex_decoded = match hex_decode(tx_hex) {
+        Ok(decoded) => decoded,
+        Err(_) => return (true, String::from("Error decoding hex")),
+    };
+    let tx: Transaction = match deserialize(&tx_hex_decoded) {
+        Ok(transaction) => transaction,
+        Err(_) => return (false, String::from("Error deserializing transaction")),
+    };
+
+    
+    let txin = &tx.input[0];
+
+    // Lock the global groups and iterate over them
+    let groups = GLOBAL_GROUPS.lock().unwrap();
+    for group in groups.iter() {
+        // Assuming `group` has a method `contains_txin` that checks if a txin is in the group
+        if group.contains_txin(&txin) {
+            return (true, String::from("TxIn is already in a group"));
+        }
+    }
+
+    return (false, String::from("Ok\n"));
+
+}
+
 fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
     // Validate that the tx has the correct format
@@ -27,6 +54,13 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
     if !valid {
         // here should send an error message as the transaction has an invalid format
+        let error_msg = format!("Error: {}\n", msg);
+        stream.write(error_msg.as_bytes()).unwrap();
+        return
+    }
+    
+    let (double_spend, msg) = check_double_spending_other_group(transaction);
+    if double_spend {
         let error_msg = format!("Error: {}\n", msg);
         stream.write(error_msg.as_bytes()).unwrap();
         return
@@ -41,7 +75,7 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
     // Search for the group corresponing to the transaction fee rate
     let group = groups.iter_mut().find(|g| g.fee_rate == expected_group_fee);
 
-    let mut close_group = false;
+    let close_group;
     match group {
         Some(group) => {
             //The group already exist so we add the tx to that group
@@ -63,6 +97,8 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
         println!("Group with fee_rate {} removed", expected_group_fee);
     }
     
+    stream.write(msg.as_bytes()).unwrap();
+
     return;
 }
 /*

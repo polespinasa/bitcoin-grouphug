@@ -2,11 +2,12 @@
 
 
 use bdk::bitcoin::OutPoint;
-use bdk::bitcoin::{Transaction,
+use bdk::bitcoin::{
+    Transaction,
     consensus::encode::deserialize,
     blockdata::locktime::absolute::{Height, Time}};
 
-    use bdk::blockchain::{ElectrumBlockchain, GetTx};
+use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
