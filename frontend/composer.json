@@ -6,7 +6,8 @@
     "require": {
         "nyholm/psr7": "^1.8",
         "nyholm/psr7-server": "^1.1",
-        "slim/slim": "^4.13"
+        "slim/slim": "^4.13",
+        "twig/twig": "^3.8"
     },
     "require-dev": {
         "roave/security-advisories": "dev-latest"
