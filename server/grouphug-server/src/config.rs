@@ -18,3 +18,9 @@ pub const DUST_LIMIT: u64 = 1000;
 
 /// Fee range
 pub const FEE_RANGE: f32 = 2.0;
+
+
+
+// IP & PORT FOR BINDING THE SERVER
+pub const SERVER_IP: &str = "127.0.0.1";
+pub const SERVER_PORT: &str = "8787";

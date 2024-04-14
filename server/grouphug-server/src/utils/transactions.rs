@@ -19,11 +19,9 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // Given an input from a certain transaction returns the value of the pointed UTXO.
     // If no UTXO is recieved back, the value returned is 0.
 
-    println!("Connecting to the node");
     // Connect to Electrum node
     let client = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
     let blockchain = ElectrumBlockchain::from(client);
-    println!("Connected to the node");
 
     let tx_result = blockchain.get_tx(&utxo.txid);
 
@@ -47,27 +45,24 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
 pub fn previous_utxo_spent(tx: &Transaction) -> bool {
     // Validates that the utxo pointed to by the transaction input has not been spent.
 
-    println!("Connecting to the node");
     // Connect to Electrum node
     let client = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
     let blockchain = ElectrumBlockchain::from(client);
-    println!("Connected to the node");
 
-
+    // Get the previous transaction from the input
     let outpoint = tx.input[0].previous_output;
     let tx_result = blockchain.get_tx(&outpoint.txid);
 
     match tx_result {
         Ok(Some(tx)) => {
-            // validate if the output has been spent
 
+            // validate if the output has been spent
             let utxo_script_pubkey = &tx.output[outpoint.vout as usize].script_pubkey;
             let utxo_list = blockchain.script_list_unspent(&utxo_script_pubkey);
 
             match utxo_list {
                 Ok(returned_utxo_list) => {
                     if returned_utxo_list.len() > 0 {
-                        println!("Transaction available");
                         return true;
                     }
                     else {
@@ -90,7 +85,6 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
             return false;
         }
     }
-
 }
 
 pub fn check_absolute_locktime(tx: &Transaction) -> bool {
@@ -102,13 +96,11 @@ pub fn check_absolute_locktime(tx: &Transaction) -> bool {
 
 pub fn check_dust_limit(tx: &Transaction) -> bool {
     // Return true or false if the tx value is >= than the DUST_LIMIT.
-    println!("Output value {}: ", tx.output[0].value);
     return tx.output[0].value >= DUST_LIMIT;
 }
 
 pub fn check_tx_version(tx: &Transaction) -> bool {
     // Return ture or false if the tx version is 2
-    println!("{}", tx.version);
     return tx.version == 2;
 }
 
@@ -119,11 +111,9 @@ pub fn get_num_inputs_and_outputs(tx: &Transaction) -> (usize, usize) {
 
 pub fn check_sighash_single_anyone_can_pay(tx: &Transaction) -> bool {
     // Ensure that the signature is using SIGHASH_SINGLE|ANYONECANPAY
-    // The tx must have only one input and one output
     // Script must be simple P2WPKH (witness: <signature> <pubkey>)
 
     if tx.input[0].witness.len() != 2 {
-        println!("Witness has more than two elements");
         return false;
     }
 
@@ -133,13 +123,11 @@ pub fn check_sighash_single_anyone_can_pay(tx: &Transaction) -> bool {
         Some(input) => {
             // 131 decimal representation of 0x83 designated to SIGHASH_SINGLE | ANYONECANPAY
             if *input != 131 as u8{
-                println!("Sighash type not correct, must be SIGHASH_SINGLE | ANYONECANPAY");
                 return false;
             }
-            println!("Sighash correct {} is SIGHASH_SINGLE | ANYONECANPAY", input);
         },
         None => {
-            println!("No witness");
+            // There's no witness
             return false;
         }
     }
@@ -147,9 +135,9 @@ pub fn check_sighash_single_anyone_can_pay(tx: &Transaction) -> bool {
     return true;
 }
 
-//pub fn validate_tx_query_one_to_one_single_anyone_can_pay(min_fee_rate: f32, tx_hex: &str ) -> bool {
 pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (bool, String, f32) {
     // Validate that a given transaction (in hex) is valid according to the rules.
+    // Returns true if the tx is valid. String with the error message if any and a f32 with the fee_rate of the transaction    
     // Rules:
     //  - Should only be 1 input.
     //  - Should only be 1 output.
@@ -161,7 +149,6 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     
     let mut real_fee_rate: f32 = 0.0;
     
-    println!("Deserializing");
     let tx_hex_decoded = match hex_decode(tx_hex) {
         Ok(decoded) => decoded,
         Err(_) => return (false, String::from("Error decoding hex"), real_fee_rate),
@@ -170,69 +157,66 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
         Ok(transaction) => transaction,
         Err(_) => return (false, String::from("Error deserializing transaction"), real_fee_rate),
     };
-    //let tx: Transaction = deserialize(&hex_decode(tx_hex).unwrap()).unwrap();
     
-    // Only one input
+    
+    // Check that there is only one input
     let num_inputs_and_outputs: (usize, usize) = get_num_inputs_and_outputs(&tx);
     if  num_inputs_and_outputs != (1,1) {
-        println!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
         let msg = format!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
         return (false, msg, real_fee_rate);
     }
     
+    // Check that the absolute lock time is disabled or set to 0
     let abs_lock_time: bool = check_absolute_locktime(&tx);
     if !abs_lock_time {
-        println!("Absolute locktime is not 0");
         let msg = String::from("Absolute locktime is not 0");
         return (false,msg, real_fee_rate);
     }
 
+    // Check that the transaction value is over the dust limit specified in the config file
     let dust_limit_valid: bool = check_dust_limit(&tx);
     if !dust_limit_valid {
-        println!("The transaction value is under the dust limit {}", DUST_LIMIT);
         let msg = format!("The transaction value is under the dust limit {}", DUST_LIMIT);
-        //let msg = String::from("The transaction value is under the dust limit {}", DUST_LIMIT);
         return (false,msg, real_fee_rate);
     }
 
+    // Check that the transaction version is v2
     let tx_version_correct: bool = check_tx_version(&tx);
     if !tx_version_correct{
-        println!("Tx version is not 2");
         let msg = String::from("Tx version is not 2");
         return (false, msg, real_fee_rate);
     }
 
     
+    // Check that previous utxo value is not 0
+    // Aka is not an op_return
     let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[0].previous_output);
     if previous_utxo_value == 0.0 {
-        println!("There's an error loading the previous utxo value");
         let msg = String::from("There's an error loading the previous utxo value");
         return (false,msg, real_fee_rate);
     } else{
         real_fee_rate = (previous_utxo_value - tx.output[0].value as f32)/tx.vsize() as f32;
     }
 
+    // Check that the fee rate is not under 1sat/vb
     if real_fee_rate <= 1.01 {
-        println!("Fee bellow 1 sat/vb. Fee rate found {}", real_fee_rate);
         let msg = format!("Fee bellow 1 sat/vb. Fee rate found {}", real_fee_rate);
         return (false,msg, real_fee_rate);
     }
     
-    // The signature type must be SIGHASH_SINGLE |ANYONECANPAY
+
+    // Check that the signature type is SIGHASH_SINGLE |ANYONECANPAY
     if !check_sighash_single_anyone_can_pay(&tx) {
-        println!("Wrong sighash used");
         let msg = String::from("Wrong sighash used");
         return (false,msg, real_fee_rate);
     }
 
-    // Output not spent
+    // Check if there's a double spending attempt
     if !previous_utxo_spent(&tx) {
-        println!("Double spending detected");
         let msg = String::from("Double spending detected");
         return (false,msg, real_fee_rate);
     }
 
-    
     
     return (true, String::from("Ok"), real_fee_rate);
 
@@ -240,7 +224,7 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
 
 
 
-
+// TESTS MAY NOT WORK AS THEY ARE NOT UPDATED
 #[cfg(test)]
 
 mod tests {
