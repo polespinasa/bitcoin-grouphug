@@ -13,7 +13,21 @@ define('__ROOT__', dirname(__DIR__));
 
 require __ROOT__ . '/vendor/autoload.php';
 
+if (!file_exists(__ROOT__ . '/settings.ini')) {
+    file_put_contents(
+        __ROOT__ . '/settings.ini',
+        str_replace('changeme', base64_encode(random_bytes(24)), file_get_contents(__ROOT__ . '/settings.ini.dist'))
+    );
+}
+
+$settings = parse_ini_file(__ROOT__ . '/settings.ini', scanner_mode: INI_SCANNER_TYPED);
+
 $app = AppFactory::create();
+$app->addErrorMiddleware(
+    $settings['debug'],
+    $settings['debug'],
+    $settings['debug']
+);
 
 $twig = new Environment(
     new FilesystemLoader(__ROOT__.'/views'),
@@ -29,14 +43,14 @@ $app->get('/', function (ServerRequestInterface $request, ResponseInterface $res
     return $response;
 });
 
-$app->post('/tx', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig) {
+$app->post('/tx', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig, $settings) {
     $form = $request->getParsedBody();
 
     if (!is_array($form) || empty($form['tx']) || strlen($form['tx']) > 1024 || !preg_match('/^([0-9a-fA-F]{2})+$/', $form['tx'])) {
         return new Response(400, ['Content-Type' => 'text/plain'], 'Fuck off, mate');
     }
 
-    $fh = fsockopen('localhost', 8787);
+    $fh = fsockopen($settings['grouphug_hostname'], $settings['grouphug_port']);
     if ($fh === false) {
         return new Response(500, ['Content-Type' => 'text/plain'], 'Cannot connect to GroupHug server');
     }
