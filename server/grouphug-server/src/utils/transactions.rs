@@ -24,8 +24,6 @@ pub fn which_network(tx: &Transaction) -> &str {
     // Take previous UTXO
     let tx_id = tx.input[0].previous_output.txid;
 
-    println!("Tx id {}", tx_id.to_string());
-
     // Test mainnet
     let client_mainnet = Client::new(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
     let blockchain_mainnet = ElectrumBlockchain::from(client_mainnet);

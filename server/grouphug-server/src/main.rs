@@ -142,7 +142,17 @@ fn handle_client(mut stream: TcpStream) {
             return;
         }
 
-        let command_string = String::from_utf8(buffer[0..nbytes].to_vec()).unwrap();
+        let command_string = match String::from_utf8(buffer[0..nbytes].to_vec()) {
+            Ok(s) => s,
+            // If error user has disconnected
+            Err(e) => {
+                println!("Good bye looser!");
+                return;
+            },
+        };
+        
+
+
         let command_parts: Vec<&str> = command_string.trim().split_whitespace().collect();
         
         if command_parts.len() != 2 {
@@ -160,6 +170,8 @@ fn handle_client(mut stream: TcpStream) {
         }
     }
 }
+
+
 
 fn main() {
     
