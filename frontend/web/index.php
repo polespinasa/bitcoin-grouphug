@@ -13,11 +13,14 @@ define('__ROOT__', dirname(__DIR__));
 
 require __ROOT__ . '/vendor/autoload.php';
 
-if (!file_exists(__ROOT__ . '/settings.ini')) {
+if (!file_exists(__ROOT__ . '/settings.ini') && flock($lock = fopen(__ROOT__ . '/settings.ini.dist', 'r'), LOCK_EX | LOCK_NB)) {
     file_put_contents(
         __ROOT__ . '/settings.ini',
         str_replace('changeme', base64_encode(random_bytes(24)), file_get_contents(__ROOT__ . '/settings.ini.dist'))
     );
+
+    flock($lock, LOCK_UN);
+    fclose($lock);
 }
 
 $settings = parse_ini_file(__ROOT__ . '/settings.ini', scanner_mode: INI_SCANNER_TYPED);

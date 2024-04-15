@@ -4,9 +4,3 @@ debug = true
 ; GroupHug backend endpoint
 grouphug_hostname = "127.0.0.1"
 grouphug_port = 8787
-
-; Secret for issuing and verifying CSRF tokens
-csrf_secret = "changeme"
-
-; Seconds until CSRF tokens expire
-csrf_ttl = 600
