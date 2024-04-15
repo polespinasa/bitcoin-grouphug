@@ -14,8 +14,7 @@ use bdk::electrum_client::{Client, ElectrumApi};
 
 
 use crate::config::{
-    TESTNET_ELECTRUM_SERVER_ENDPOINT,
-    //MAINNET_ELECTRUM_SERVER_ENDPOINT,
+    ELECTRUM_ENDPOINT,
     MAX_SIZE,
     //MAX_TIME
 };
@@ -96,7 +95,7 @@ impl Group {
         let tx_bytes = hex_decode(tx_hex).unwrap();
 
         // Connect to Electrum node
-        let client = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+        let client = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
 
         // broadcast the transaction
         let txid = client.transaction_broadcast_raw(&tx_bytes);

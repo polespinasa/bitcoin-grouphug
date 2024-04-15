@@ -3,15 +3,22 @@ mod utils;
 mod config;
 mod server;
 use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_pay;
-use crate::config::{FEE_RANGE, SERVER_IP, SERVER_PORT};
+use crate::config::{
+    FEE_RANGE,
+    SERVER_IP,
+    SERVER_PORT,
+    ELECTRUM_ENDPOINT,
+    TESTNET_ELECTRUM_SERVER_ENDPOINT,
+    MAINNET_ELECTRUM_SERVER_ENDPOINT,
+    NETWORK};
 use crate::server::group::Group;
-
 
 // External libraries
 use std::thread;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::str;
+use std::env;
 use std::sync::{Arc, Mutex};
 use once_cell::sync::Lazy;
 use hex::decode as hex_decode;
@@ -118,6 +125,16 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
 
 fn handle_client(mut stream: TcpStream) {
+
+    // send the network configuration
+    
+    if *ELECTRUM_ENDPOINT.get().unwrap() == TESTNET_ELECTRUM_SERVER_ENDPOINT {
+        stream.write(b"TESTNET\n").unwrap();
+    }
+    else {
+        stream.write(b"MAINNET\n").unwrap();
+    }
+
     let mut buffer = [0; 512];
     loop {
         let nbytes = stream.read(&mut buffer).unwrap();
@@ -146,6 +163,40 @@ fn handle_client(mut stream: TcpStream) {
 
 fn main() {
     
+    let args: Vec<String> = env::args().collect();
+
+    match args.len() {
+        1 => {
+            println!("No network specified, assuming MAINNET...");
+            ELECTRUM_ENDPOINT.set(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+            NETWORK.set("MAINNET").unwrap();
+        }
+        2 => {
+            let network = &args[1];
+            match network.as_str() {
+                "mainnet" | "testnet" => {
+                    println!("Network set to: {}", network);
+                    if network.as_str() == "testnet" {
+                        ELECTRUM_ENDPOINT.set(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+                        NETWORK.set("TESTNET").unwrap();
+                    }
+                    else {
+                        ELECTRUM_ENDPOINT.set(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+                        NETWORK.set("MAINNET").unwrap();
+                    }
+                },
+                _ => {
+                    println!("Only 'mainnet' or 'testnet' are valid arguments...");
+                    return;
+                },
+            }
+        },
+        _ => {
+            println!("Too many argument. Only 'mainnet' or 'testnet' are valid arguments...");
+            return;
+        },
+    }
+
     // Fromat endpoint data from config file
     let endpoint: String = format!("{}:{}", SERVER_IP, SERVER_PORT);
     
