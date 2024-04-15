@@ -13,7 +13,7 @@
         <div class="col-md-6 offset-md-3">
             <h2 class="mb-4">Bitcoin GroupHug <span class="badge bg-warning">Testnet</span></h2>
 
-            <form method="post" action="/tx">
+            <form method="post" action="/">
                 <div class="mb-3">
                     <label for="tx" class="form-label">Submit Transaction</label>
                     <textarea class="form-control" id="tx" name="tx" rows="5" placeholder="Transaction hex"></textarea>
@@ -34,6 +34,11 @@
             </ul>
         </div>
     </div>
+    {% if role is not null and message is not null %}
+    <div class="row">
+        <div class="col-md-6 offset-md-3 alert alert-{{ role }}" role="alert">{{ message }}</div>
+    </div>
+    {% endif %}
 </div>
 
 </body>

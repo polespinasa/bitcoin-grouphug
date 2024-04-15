@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Nyholm\Psr7\Response;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Factory\AppFactory;
@@ -38,27 +37,33 @@ $twig = new Environment(
 );
 
 $app->get('/', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig) {
-    $response->getBody()->write($twig->render('index.html.twig'));
+    $response->getBody()->write($twig->render('index.html.twig', ['role' => null, 'message' => null]));
 
     return $response;
 });
 
-$app->post('/tx', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig, $settings) {
+$app->post('/', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig, $settings) {
     $form = $request->getParsedBody();
 
     if (!is_array($form) || empty($form['tx']) || strlen($form['tx']) > 1024 || !preg_match('/^([0-9a-fA-F]{2})+$/', $form['tx'])) {
-        return new Response(400, ['Content-Type' => 'text/plain'], 'Fuck off, mate');
+        $response->getBody()->write($twig->render('index.html.twig', ['role' => 'danger', 'message' => 'Transaction rejected!']));
+
+        return $response;
     }
 
     $fh = fsockopen($settings['grouphug_hostname'], $settings['grouphug_port']);
     if ($fh === false) {
-        return new Response(500, ['Content-Type' => 'text/plain'], 'Cannot connect to GroupHug server');
+        $response->getBody()->write($twig->render('index.html.twig', ['role' => 'warning', 'message' => 'Service down, try again later.']));
+
+        return $response;
     }
 
     fwrite($fh, "add_tx {$form['tx']}");
     fclose($fh);
 
-    return new Response(302, ['Location' => '/']);
+    $response->getBody()->write($twig->render('index.html.twig', ['role' => 'success', 'message' => 'Transaction accepted!']));
+
+    return $response;
 });
 
 $app->run();
