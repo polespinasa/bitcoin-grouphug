@@ -76,4 +76,5 @@ go.work
 .vscode/settings.json
 
 # frontend ignored files and directories
+settings.ini
 vendor/
