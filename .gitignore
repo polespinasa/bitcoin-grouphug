@@ -51,4 +51,5 @@ Cargo.lock
 *.app
 
 # frontend ignored files and directories
+settings.ini
 vendor/

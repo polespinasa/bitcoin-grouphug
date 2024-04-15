@@ -1,0 +1,11 @@
+; App mode. Debug shows extended information on crashes.
+debug = true
+
+; GroupHug backend endpoint
+grouphug_server = "127.0.0.1:8787"
+
+; Secret for issuing and verifying CSRF tokens
+csrf_secret = "changeme"
+
+; Seconds until CSRF tokens expire
+csrf_ttl = 600
