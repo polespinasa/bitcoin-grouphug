@@ -144,8 +144,8 @@ fn handle_client(mut stream: TcpStream) {
 
         let command_string = match String::from_utf8(buffer[0..nbytes].to_vec()) {
             Ok(s) => s,
-            // If error user has disconnected
-            Err(e) => {
+            Err(_e) => {
+                // If error user has disconnected
                 println!("Good bye looser!");
                 return;
             },
