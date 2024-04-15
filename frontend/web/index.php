@@ -30,9 +30,9 @@ $app->get('/', function (ServerRequestInterface $request, ResponseInterface $res
 });
 
 $app->post('/tx', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig) {
-    ['tx' => $tx] = $request->getParsedBody();
+    $form = $request->getParsedBody();
 
-    if ($tx === '' || !preg_match('/^([0-9a-fA-F]{2})+$/', $tx)) {
+    if (!is_array($form) || empty($form['tx']) || strlen($form['tx']) > 1024 || !preg_match('/^([0-9a-fA-F]{2})+$/', $form['tx'])) {
         return new Response(400, ['Content-Type' => 'text/plain'], 'Fuck off, mate');
     }
 
@@ -41,7 +41,7 @@ $app->post('/tx', function (ServerRequestInterface $request, ResponseInterface $
         return new Response(500, ['Content-Type' => 'text/plain'], 'Cannot connect to GroupHug server');
     }
 
-    fwrite($fh, "add_tx $tx");
+    fwrite($fh, "add_tx {$form['tx']}");
     fclose($fh);
 
     return new Response(302, ['Location' => '/']);
