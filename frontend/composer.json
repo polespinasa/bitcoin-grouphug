@@ -1,0 +1,22 @@
+{
+    "name": "grouphug/grouphug",
+    "type": "project",
+    "description": "Simple web frontend for the GroupHug server",
+    "license": "MIT",
+    "require": {
+        "nyholm/psr7": "^1.8",
+        "nyholm/psr7-server": "^1.1",
+        "slim/slim": "^4.13",
+        "twig/twig": "^3.8"
+    },
+    "require-dev": {
+        "roave/security-advisories": "dev-latest"
+    },
+    "scripts": {
+        "serve": "@php -S 127.0.0.1:8080 -t web cli-index.php"
+    },
+    "config": {
+        "process-timeout": 0,
+        "sort-packages": true
+    }
+}
