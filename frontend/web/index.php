@@ -64,7 +64,7 @@ function processTx(mixed $form, $conn): array
 
     $reply = stream_get_line($conn, 128, "\n");
 
-    if ('Ok' != $reply) {
+    if ('Ok' !== $reply) {
         return ['class' => 'alert-warning', 'message' => 'Transaction rejected. '.$reply];
     }
 
