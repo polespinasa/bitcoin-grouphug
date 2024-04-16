@@ -22,7 +22,7 @@
             <form method="post" action="/">
                 <div class="mb-3">
                     <label for="tx" class="form-label">Submit Transaction</label>
-                    <textarea class="form-control" id="tx" name="tx" rows="5" placeholder="Transaction hex" required></textarea>
+                    <textarea class="form-control" id="tx" name="tx" rows="5" placeholder="Transaction hex" {% if not service_down %}required{% else %}disabled{% endif %}></textarea>
                 </div>
                 <button type="submit" {% if not service_down %}class="btn btn-primary"{% else %}class="btn btn-dark" disabled{% endif %}>Full Send</button>
             </form>
