@@ -32,7 +32,7 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
         return $twig->render(new Response(), 'index.html.twig', ['alert' => ['class' => 'alert-warning', 'message' => 'Service down, try again later.']]);
     }
 
-    $twig->getEnvironment()->addGlobal('chain', $chain = stream_get_line($fh, 16, "\n"));
+    $twig->getEnvironment()->addGlobal('chain', stream_get_line($fh, 16, "\n"));
 
     $response = $handler->handle($request->withAttribute('grouphug_conn', $fh));
 
@@ -64,8 +64,8 @@ function processTx(mixed $form, $conn): array
 
     $reply = stream_get_line($conn, 128, "\n");
 
-    if ($reply != 'Ok') {
-        return ['class' => 'alert-warning', 'message' => 'Transaction rejected. ' . $reply];
+    if ('Ok' != $reply) {
+        return ['class' => 'alert-warning', 'message' => 'Transaction rejected. '.$reply];
     }
 
     return ['class' => 'alert-success', 'message' => 'Transaction accepted!'];
