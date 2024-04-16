@@ -1,10 +1,10 @@
-name: Frontend CI
+name: Continuous Integration
 
 on: push
 
 jobs:
   run:
-    name: Frontend Continuous Integration
+    name: Frontend CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -13,5 +13,5 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: 8.3
-      - run: composer install
-      - run: php vendor/bin/php-cs-fixer check -v
+      - run: composer install -d frontend
+      - run: php frontend/vendor/bin/php-cs-fixer check --config frontend/.php-cs-fixer.php -v
