@@ -68,11 +68,8 @@ fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
 fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
     // Validate that the tx has the correct format and satisfies all the rules
-    // Decode the transaction received
-
     let (valid, msg, fee_rate) = validate_tx_query_one_to_one_single_anyone_can_pay(transaction);
 
-    //let tx: Transaction = deserialize(&hex_decode(transaction).unwrap()).unwrap();
     println!("Client {} sent a new raw transaction: {}",stream.peer_addr().unwrap(), transaction);
 
     if !valid {
