@@ -29,13 +29,15 @@ $app->addErrorMiddleware($settings['debug'], $settings['debug'], $settings['debu
 
 $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $handler) use ($twig, $settings): ResponseInterface {
     if (false === $fh = stream_socket_client($settings['grouphug_server'])) {
-        return $twig->render(new Response(), 'index.html.twig', ['role' => 'warning', 'message' => 'Service down, try again later.']);
+        return $twig->render(new Response(), 'index.html.twig', ['alert' => ['class' => 'alert-warning', 'message' => 'Service down, try again later.']]);
     }
+
+    $twig->getEnvironment()->addGlobal('chain', $chain = stream_get_line($fh, 16, "\n"));
 
     $response = $handler->handle(
         $request
             ->withAttribute('grouphug_conn', $fh)
-            ->withAttribute('grouphug_chain', stream_get_line($fh, 16, "\n"))
+            ->withAttribute('grouphug_chain', $chain)
     );
 
     stream_socket_shutdown($fh, \STREAM_SHUT_RDWR);
@@ -45,21 +47,32 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
 });
 
 $app->get('/', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig) {
-    return $twig->render($response, 'index.html.twig', ['role' => null, 'message' => null]);
+    return $twig->render($response, 'index.html.twig', ['chain' => $request->getAttribute('grouphug_chain')]);
 });
 
 $app->post('/', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig) {
-    $form = $request->getParsedBody();
-
-    if (!is_array($form) || empty($form['tx']) || strlen($form['tx']) > 1024 || !preg_match('/^([0-9a-fA-F]{2})+$/', $form['tx'])) {
-        return $twig->render($response, 'index.html.twig', ['role' => 'danger', 'message' => 'Transaction rejected!']);
-    }
-
-    if (false === fwrite($request->getAttribute('grouphug_conn'), "add_tx {$form['tx']}")) {
-        return $twig->render($response, 'index.html.twig', ['role' => 'warning', 'message' => 'Service down, try again later.']);
-    }
-
-    return $twig->render($response, 'index.html.twig', ['role' => 'success', 'message' => 'Transaction accepted!']);
+    return $twig->render($response, 'index.html.twig', ['alert' => processTx($request->getParsedBody(), $request->getAttribute('grouphug_conn'))]);
 });
+
+function processTx(mixed $form, $conn): array
+{
+    if (!is_array($form) || empty($form['tx']) || strlen($form['tx']) > 1024 || !preg_match('/^([0-9a-fA-F]{2})+$/', $form['tx'])) {
+        return ['class' => 'alert-danger', 'message' => 'Invalid transaction received.'];
+    }
+
+    $tx = $form['tx'];
+
+    if (false === stream_socket_sendto($conn, "add_tx $tx")) {
+        return ['class' => 'alert-warning', 'message' => 'Service down, try again later.'];
+    }
+
+    $reply = stream_get_line($conn, 128, "\n");
+
+    if ($reply != 'Ok') {
+        return ['class' => 'alert-warning', 'message' => 'Transaction rejected. ' . $reply];
+    }
+
+    return ['class' => 'alert-success', 'message' => 'Transaction accepted!'];
+}
 
 $app->run();

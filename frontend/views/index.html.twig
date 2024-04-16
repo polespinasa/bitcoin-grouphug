@@ -8,21 +8,23 @@
 </head>
 <body>
 
+{% set service_down = chain is not defined %}
+
 <div class="container mt-5">
     <div class="row">
         <div class="col-md-6 offset-md-3">
-            <h2 class="mb-4">Bitcoin GroupHug <span class="badge bg-warning">Testnet</span></h2>
+            <h2 class="mb-4">Bitcoin GroupHug {% if service_down %}<span class="badge bg-dark">Down</span>{% elseif chain == 'MAINNET' %}<span class="badge bg-success">Mainnet</span>{% else %}<span class="badge bg-warning">Testnet</span>{% endif %}</h2>
 
-            {% if role is not null and message is not null %}
-            <div class="col-md-12 alert alert-{{ role }}" role="alert">{{ message }}</div>
+            {% if alert is defined %}
+            <div class="col-md-12 alert {{ alert.class }}" role="alert">{{ alert.message }}</div>
             {% endif %}
 
             <form method="post" action="/">
                 <div class="mb-3">
                     <label for="tx" class="form-label">Submit Transaction</label>
-                    <textarea class="form-control" id="tx" name="tx" rows="5" placeholder="Transaction hex"></textarea>
+                    <textarea class="form-control" id="tx" name="tx" rows="5" placeholder="Transaction hex" required></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary">Full Send</button>
+                <button type="submit" {% if not service_down %}class="btn btn-primary"{% else %}class="btn btn-dark" disabled{% endif %}>Full Send</button>
             </form>
         </div>
     </div>
