@@ -34,11 +34,7 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
 
     $twig->getEnvironment()->addGlobal('chain', $chain = stream_get_line($fh, 16, "\n"));
 
-    $response = $handler->handle(
-        $request
-            ->withAttribute('grouphug_conn', $fh)
-            ->withAttribute('grouphug_chain', $chain)
-    );
+    $response = $handler->handle($request->withAttribute('grouphug_conn', $fh));
 
     stream_socket_shutdown($fh, \STREAM_SHUT_RDWR);
     fclose($fh);
@@ -47,7 +43,7 @@ $app->add(function (ServerRequestInterface $request, RequestHandlerInterface $ha
 });
 
 $app->get('/', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig) {
-    return $twig->render($response, 'index.html.twig', ['chain' => $request->getAttribute('grouphug_chain')]);
+    return $twig->render($response, 'index.html.twig');
 });
 
 $app->post('/', function (ServerRequestInterface $request, ResponseInterface $response) use ($twig) {
