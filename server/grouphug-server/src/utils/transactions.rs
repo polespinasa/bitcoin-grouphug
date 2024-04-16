@@ -245,7 +245,7 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
 
     // Check that the fee rate is not under 1sat/vb
     if real_fee_rate <= 1.01 {
-        let msg = format!("Fee bellow 1 sat/vb. Fee rate found {}", real_fee_rate);
+        let msg = format!("Fee bellow 1 sat/vB. Fee rate found {}sat/vB", real_fee_rate);
         return (false,msg, real_fee_rate);
     }
     

@@ -56,6 +56,7 @@ fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
     for group in groups.iter() {
         // Checks if a tx input is in the group
         if group.contains_txin(&txin) {
+            println!("Transaction was rejected, Error: transaction input is already in a group\n");
             return (true, String::from("Transaction input is already in a group"));
         }
     }
@@ -67,14 +68,22 @@ fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
 fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
     // Validate that the tx has the correct format and satisfies all the rules
+    // Decode the transaction received
+
     let (valid, msg, fee_rate) = validate_tx_query_one_to_one_single_anyone_can_pay(transaction);
+
+    //let tx: Transaction = deserialize(&hex_decode(transaction).unwrap()).unwrap();
+    println!("Client {} sent a new raw transaction: {}",stream.peer_addr().unwrap(), transaction);
 
     if !valid {
         // should send an error message as the transaction has an invalid format or does not match some rule
         let error_msg = format!("Error: {}\n", msg);
+        println!("Transaction was rejected, {}\n", error_msg);
         stream.write(error_msg.as_bytes()).unwrap();
         return
     }
+
+
     
     let (double_spend, msg) = check_double_spending_other_group(transaction);
     if double_spend {
@@ -98,22 +107,19 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
         Some(group) => {
             // If some then the group already exist so we add the tx to that group
             close_group = group.add_tx(transaction);
-            println!("Tx added to group with fee_rate {}", group.fee_rate);
         },
         None => {
             // If none then there is no group for this fee rate so we create one
             let mut new_group = Group::new(expected_group_fee);
+            println!("New group created with fee_rate {}sat/vB", new_group.fee_rate);
             close_group = new_group.add_tx(transaction);
-            println!("New group created with fee_rate {}", new_group.fee_rate);
             groups.push(new_group);
-            println!("Tx added to the new group");
         }
     }
 
     if close_group {
         // If the group has been closed during the add_tx function we delete it from the groups vector
         groups.retain(|g| g.fee_rate != expected_group_fee);
-        println!("Group with fee_rate {} removed", expected_group_fee);
     }
     
 
@@ -126,8 +132,9 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
 fn handle_client(mut stream: TcpStream) {
 
+    println!("New user connected: {}\n", stream.peer_addr().unwrap());
+
     // send the network configuration
-    
     if *ELECTRUM_ENDPOINT.get().unwrap() == TESTNET_ELECTRUM_SERVER_ENDPOINT {
         stream.write(b"TESTNET\n").unwrap();
     }
@@ -146,7 +153,7 @@ fn handle_client(mut stream: TcpStream) {
             Ok(s) => s,
             Err(_e) => {
                 // If error user has disconnected
-                println!("Good bye looser!");
+                println!("Client {} disconnected\n", stream.peer_addr().unwrap());
                 return;
             },
         };
@@ -158,7 +165,8 @@ fn handle_client(mut stream: TcpStream) {
         if command_parts.len() != 2 {
             // If there's more than two arguments on the call something is worng.
             // Expected format: "add_tx raw_tx_data"
-            println!("Invalid command: {}", command_string);
+            println!("Client {} sent a command with wrong number of arguments: {}\n", stream.peer_addr().unwrap(), command_string.trim());
+            stream.write(b"Two arguments are expected\n").unwrap();
             continue;
         }
         let (command, arg) = (command_parts[0], command_parts[1]);
@@ -166,7 +174,10 @@ fn handle_client(mut stream: TcpStream) {
         match command {
             // This allows to add more commands in the future
             "add_tx" => handle_addtx(arg, stream.try_clone().unwrap()),
-            _ => println!("Command not known: {}", command),
+            _ => {
+                println!("Client {} sent an unknown command: {}\n", stream.peer_addr().unwrap(), command);
+                stream.write(b"Unknown command sent\n").unwrap();
+            },
         }
     }
 }
