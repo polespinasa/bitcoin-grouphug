@@ -3,10 +3,47 @@ mod utils;
 mod config;
 mod server;
 use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_pay;
-use std::fs;
 use once_cell::sync::Lazy;
 use crate::config::Config;
+use crate::server::group::Group;
 
+
+
+// External libraries
+use std::thread;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::str;
+use std::fs;
+use std::env;
+use std::sync::{Arc, Mutex};
+use hex::decode as hex_decode;
+use bdk::bitcoin::{Transaction,consensus::encode::deserialize};
+
+pub static CONFIG: Lazy<Config> = Lazy::new(|| {
+    // Obtenir els arguments de la línia de comandes
+    let args: Vec<String> = env::args().collect();
+
+    // Especificar el camí per defecte del fitxer Config.toml
+    let default_path = "Config.toml";
+
+    // Utilitzar l'argument proporcionat si existeix, sinó utilitzar el camí per defecte
+    let config_path = if args.len() > 1 {
+        &args[1]
+    } else {
+        default_path
+    };
+
+    let contents = fs::read_to_string(config_path)
+        .expect("Something went wrong reading the file");
+
+    let config: Config = toml::from_str(&contents)
+        .expect("Unable to parse the toml file");
+
+    config
+});
+
+/*
 pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     let contents = fs::read_to_string("Config.toml")
         .expect("Something went wrong reading the file");
@@ -16,18 +53,9 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
 
     config
 });
+*/
 
-use crate::server::group::Group;
 
-// External libraries
-use std::thread;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::str;
-use std::env;
-use std::sync::{Arc, Mutex};
-use hex::decode as hex_decode;
-use bdk::bitcoin::{Transaction,consensus::encode::deserialize};
 
 // Array with Group list
 type GroupHug = Group;
@@ -189,10 +217,11 @@ fn handle_client(mut stream: TcpStream) {
 
 fn main() {
      
+
     let args: Vec<String> = env::args().collect();
-    if args.len() != 1 {
-        eprintln!("No arguments accepted");
-    }
+    //if args.len() != 1 {
+    //    eprintln!("No arguments accepted");
+    //}
         
     // Fromat endpoint data from config file
     let endpoint: String = format!("{}:{}", &crate::CONFIG.server.ip, &crate::CONFIG.server.port);
