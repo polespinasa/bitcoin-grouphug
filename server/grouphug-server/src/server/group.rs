@@ -11,7 +11,7 @@ use bdk::bitcoin::{
     consensus::encode::serialize_hex
 };
 use bdk::electrum_client::{Client, ElectrumApi};
-
+use bdk::blockchain::{ElectrumBlockchain, GetTx};
 
 use crate::config::{
     ELECTRUM_ENDPOINT,
@@ -61,8 +61,7 @@ impl Group {
 
         // Check if the group should be closed according to the MAX_SIZE limit established in config file
         if self.transactions.len() == MAX_SIZE {
-            self.close_group();
-            return true;
+            return self.close_group();
         }
         return false;
     }
@@ -83,10 +82,54 @@ impl Group {
     }
     
 
-    // Note: Could be changed to send_raw_tx call to the Bitcoin node?
     fn close_group(&mut self) -> bool {
         // Finalize the transaction and send it to the network
     
+        // Connect to Electrum node
+        let client = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
+        let blockchain = ElectrumBlockchain::from(client);
+        
+        // Check that the transactions included in the group have not been already spent
+        // If they've remove them from the group and don't close it
+        let mut i = 0;
+        while i != self.transactions.len() {
+            let in_out_tuple = &self.transactions[i];
+            let outpoint = in_out_tuple.0.clone().previous_output;
+            let tx_result = blockchain.get_tx(&outpoint.txid);
+            match tx_result {
+                Ok(Some(tx)) => {
+                    // validate if the output has been spent
+                    let utxo_script_pubkey = &tx.output[outpoint.vout as usize].script_pubkey;
+                    let utxo_list = blockchain.script_list_unspent(&utxo_script_pubkey);
+                    match utxo_list {
+                        Ok(returned_utxo_list) => {
+                            if returned_utxo_list.len() > 0 {
+                                i += 1;
+                            }
+                            else {
+                                println!("Double spending detected on a group, deleting that transaction...");
+                                self.transactions.remove(i);
+                                return false;
+                            }
+                        },
+                        Err(_e) => {
+                            println!("Error querying for the UTXO");
+                            return false;
+                        }
+                    }
+                },
+                Ok(None) => {
+                    println!("Petition succeed but no tx was returned");
+                    return false;
+                },
+                Err(_e) => {
+                    println!("Could not retrieve previous transaction");
+                    return false;
+                }
+            }
+        }
+        
+
         // Create the group transaction
         self.create_group_transaction();
         
@@ -96,11 +139,10 @@ impl Group {
 
         let tx_bytes = hex_decode(tx_hex).unwrap();
 
-        // Connect to Electrum node
-        let client = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
-
         // broadcast the transaction
-        let txid = client.transaction_broadcast_raw(&tx_bytes);
+        // There's a issue with client 1 here... TODO FIX
+        let client2 = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
+        let txid = client2.transaction_broadcast_raw(&tx_bytes);
 
         match txid {
             Ok(id) => {
