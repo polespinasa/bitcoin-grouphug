@@ -35,7 +35,7 @@ pub fn which_network(tx: &Transaction) -> &str {
     let tx_result_mainnet = blockchain_mainnet.get_tx(&tx_id);
     match tx_result_mainnet {
         Ok(Some(_tx)) => {
-            return "MAINNET"
+            return "mainnet"
         },
         Ok(None) => (),
         Err(_) => (),
@@ -49,7 +49,7 @@ pub fn which_network(tx: &Transaction) -> &str {
 
     match tx_result_testnet {
         Ok(Some(_tx)) => {
-            return "TESTNET";
+            return "testnet";
         },
         Ok(None) => (),
         Err(_) => (),
