@@ -3,6 +3,22 @@ mod utils;
 mod config;
 mod server;
 use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_pay;
+use std::fs;
+use once_cell::sync::Lazy;
+use crate::config::Config;
+
+pub static CONFIG: Lazy<Config> = Lazy::new(|| {
+    let contents = fs::read_to_string("Config.toml")
+        .expect("Something went wrong reading the file");
+
+    let config: Config = toml::from_str(&contents)
+        .expect("Unable to parse the toml file");
+
+    config
+});
+
+
+/*
 use crate::config::{
     FEE_RANGE,
     SERVER_IP,
@@ -11,6 +27,10 @@ use crate::config::{
     TESTNET_ELECTRUM_SERVER_ENDPOINT,
     MAINNET_ELECTRUM_SERVER_ENDPOINT,
     NETWORK};
+*/
+
+
+
 use crate::server::group::Group;
 
 // External libraries
@@ -20,15 +40,14 @@ use std::net::{TcpListener, TcpStream};
 use std::str;
 use std::env;
 use std::sync::{Arc, Mutex};
-use once_cell::sync::Lazy;
 use hex::decode as hex_decode;
 use bdk::bitcoin::{Transaction,consensus::encode::deserialize};
-
-
 
 // Array with Group list
 type GroupHug = Group;
 static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<GroupHug>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
+
+
 
 fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
     // Check if an input from a transaction is already duplicated on another group
@@ -91,7 +110,7 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
     }
 
     // Calculate the group fee rate.
-    let expected_group_fee = ((fee_rate / FEE_RANGE).floor() * FEE_RANGE) as f32;
+    let expected_group_fee = ((fee_rate / &crate::CONFIG.fee.range).floor() * &crate::CONFIG.fee.range) as f32;
 
     // Unlock the GLOBAL_GROUPS variable
     let mut groups = GLOBAL_GROUPS.lock().unwrap();
@@ -132,10 +151,10 @@ fn handle_client(mut stream: TcpStream) {
     println!("New user connected: {}\n", stream.peer_addr().unwrap());
 
     // send the network configuration
-    if *ELECTRUM_ENDPOINT.get().unwrap() == TESTNET_ELECTRUM_SERVER_ENDPOINT {
+    if &crate::CONFIG.network.name == "testnet" {
         stream.write(b"TESTNET\n").unwrap();
     }
-    else {
+    else if &crate::CONFIG.network.name == "mainnet" {
         stream.write(b"MAINNET\n").unwrap();
     }
 
@@ -182,43 +201,14 @@ fn handle_client(mut stream: TcpStream) {
 
 
 fn main() {
-    
+     
     let args: Vec<String> = env::args().collect();
-
-    match args.len() {
-        1 => {
-            println!("No network specified, assuming MAINNET...");
-            ELECTRUM_ENDPOINT.set(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
-            NETWORK.set("MAINNET").unwrap();
-        }
-        2 => {
-            let network = &args[1];
-            match network.as_str() {
-                "mainnet" | "testnet" => {
-                    println!("Network set to: {}", network);
-                    if network.as_str() == "testnet" {
-                        ELECTRUM_ENDPOINT.set(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
-                        NETWORK.set("TESTNET").unwrap();
-                    }
-                    else {
-                        ELECTRUM_ENDPOINT.set(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
-                        NETWORK.set("MAINNET").unwrap();
-                    }
-                },
-                _ => {
-                    println!("Only 'mainnet' or 'testnet' are valid arguments...");
-                    return;
-                },
-            }
-        },
-        _ => {
-            println!("Too many argument. Only 'mainnet' or 'testnet' are valid arguments...");
-            return;
-        },
+    if args.len() != 1 {
+        eprintln!("No arguments accepted");
     }
-
+        
     // Fromat endpoint data from config file
-    let endpoint: String = format!("{}:{}", SERVER_IP, SERVER_PORT);
+    let endpoint: String = format!("{}:{}", &crate::CONFIG.server.ip, &crate::CONFIG.server.port);
     
     let listener = TcpListener::bind(endpoint.clone()).unwrap();
 

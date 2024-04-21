@@ -13,11 +13,13 @@ use bdk::bitcoin::{
 use bdk::electrum_client::{Client, ElectrumApi};
 use bdk::blockchain::{ElectrumBlockchain, GetTx};
 
+/*
 use crate::config::{
     ELECTRUM_ENDPOINT,
     MAX_SIZE,
     //MAX_TIME
 };
+*/
 
 pub struct Group {
     pub fee_rate: f32,
@@ -60,7 +62,7 @@ impl Group {
         println!("Tx {} added to group with fee_rate {}sat/vB", tx.txid(), self.fee_rate);
 
         // Check if the group should be closed according to the MAX_SIZE limit established in config file
-        if self.transactions.len() == MAX_SIZE {
+        if self.transactions.len() == crate::CONFIG.group.max_size {
             return self.close_group();
         }
         return false;
@@ -86,7 +88,12 @@ impl Group {
         // Finalize the transaction and send it to the network
     
         // Connect to Electrum node
-        let client = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
+        let client = if &crate::CONFIG.network.name == "testnet" {
+            Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
+        } else {
+            Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
+        };
+        
         let blockchain = ElectrumBlockchain::from(client);
         
         // Check that the transactions included in the group have not been already spent
@@ -141,7 +148,12 @@ impl Group {
 
         // broadcast the transaction
         // There's a issue with client 1 here... TODO FIX
-        let client2 = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
+        let client2 = if &crate::CONFIG.network.name == "testnet" {
+            Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
+        } else {
+            Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
+        };
+        
         let txid = client2.transaction_broadcast_raw(&tx_bytes);
 
         match txid {

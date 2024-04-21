@@ -11,12 +11,14 @@ use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
+/*
 use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT,
     MAINNET_ELECTRUM_SERVER_ENDPOINT,
     ELECTRUM_ENDPOINT,
     DUST_LIMIT,
     NETWORK
 };
+*/
 
 
 pub fn which_network(tx: &Transaction) -> &str {
@@ -25,7 +27,8 @@ pub fn which_network(tx: &Transaction) -> &str {
     let tx_id = tx.input[0].previous_output.txid;
 
     // Test mainnet
-    let client_mainnet = Client::new(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+    //let client_mainnet = Client::new(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+    let client_mainnet = Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap();
     let blockchain_mainnet = ElectrumBlockchain::from(client_mainnet);
     
     
@@ -39,7 +42,8 @@ pub fn which_network(tx: &Transaction) -> &str {
     }
     
     // Test testnet
-    let client_testnet = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+    //let client_testnet = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
+    let client_testnet = Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap();
     let blockchain_testnet = ElectrumBlockchain::from(client_testnet);
     let tx_result_testnet = blockchain_testnet.get_tx(&tx_id);
 
@@ -59,7 +63,12 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // If no UTXO is recieved back, the value returned is 0.
 
     // Connect to Electrum node
-    let client = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
+    let client = if &crate::CONFIG.network.name == "testnet" {
+        Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
+    } else {
+        Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
+    };
+    
     let blockchain = ElectrumBlockchain::from(client);
 
     let tx_result = blockchain.get_tx(&utxo.txid);
@@ -85,7 +94,12 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
     // Validates that the utxo pointed to by the transaction input has not been spent.
 
     // Connect to Electrum node
-    let client = Client::new(ELECTRUM_ENDPOINT.get().unwrap()).unwrap();
+    let client = if &crate::CONFIG.network.name == "testnet" {
+        Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
+    } else {
+        Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
+    };
+    
     let blockchain = ElectrumBlockchain::from(client);
 
     // Get the previous transaction from the input
@@ -135,7 +149,7 @@ pub fn check_absolute_locktime(tx: &Transaction) -> bool {
 
 pub fn check_dust_limit(tx: &Transaction) -> bool {
     // Return true or false if the tx value is >= than the DUST_LIMIT.
-    return tx.output[0].value >= DUST_LIMIT;
+    return tx.output[0].value >= crate::CONFIG.dust.limit;
 }
 
 pub fn check_tx_version(tx: &Transaction) -> bool {
@@ -199,8 +213,8 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     
     // Check that the transaction belongs to the specified network
     let network: &str = which_network(&tx);
-    if network != *NETWORK.get().unwrap() {
-        let msg = format!("The grouphug network is {} and you sent a transaction from the {} network", *NETWORK.get().unwrap(), network);
+    if network != &crate::CONFIG.network.name {
+        let msg = format!("The grouphug network is {} and you sent a transaction from the {} network", &crate::CONFIG.network.name, network);
         return (false, msg, real_fee_rate);
     }
     
@@ -221,7 +235,7 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     // Check that the transaction value is over the dust limit specified in the config file
     let dust_limit_valid: bool = check_dust_limit(&tx);
     if !dust_limit_valid {
-        let msg = format!("The transaction value is under the dust limit {}", DUST_LIMIT);
+        let msg = format!("The transaction value is under the dust limit {}", &crate::CONFIG.dust.limit);
         return (false,msg, real_fee_rate);
     }
 
