@@ -17,20 +17,6 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     config
 });
 
-
-/*
-use crate::config::{
-    FEE_RANGE,
-    SERVER_IP,
-    SERVER_PORT,
-    ELECTRUM_ENDPOINT,
-    TESTNET_ELECTRUM_SERVER_ENDPOINT,
-    MAINNET_ELECTRUM_SERVER_ENDPOINT,
-    NETWORK};
-*/
-
-
-
 use crate::server::group::Group;
 
 // External libraries
@@ -151,6 +137,7 @@ fn handle_client(mut stream: TcpStream) {
     println!("New user connected: {}\n", stream.peer_addr().unwrap());
 
     // send the network configuration
+    // TODO -> Find a way to ask the electrum server what network is running
     if &crate::CONFIG.network.name == "testnet" {
         stream.write(b"TESTNET\n").unwrap();
     }

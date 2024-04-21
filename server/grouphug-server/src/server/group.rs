@@ -13,13 +13,6 @@ use bdk::bitcoin::{
 use bdk::electrum_client::{Client, ElectrumApi};
 use bdk::blockchain::{ElectrumBlockchain, GetTx};
 
-/*
-use crate::config::{
-    ELECTRUM_ENDPOINT,
-    MAX_SIZE,
-    //MAX_TIME
-};
-*/
 
 pub struct Group {
     pub fee_rate: f32,
@@ -88,11 +81,8 @@ impl Group {
         // Finalize the transaction and send it to the network
     
         // Connect to Electrum node
-        let client = if &crate::CONFIG.network.name == "testnet" {
-            Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
-        } else {
-            Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
-        };
+        let client = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
+
         
         let blockchain = ElectrumBlockchain::from(client);
         
@@ -148,12 +138,7 @@ impl Group {
 
         // broadcast the transaction
         // There's a issue with client 1 here... TODO FIX
-        let client2 = if &crate::CONFIG.network.name == "testnet" {
-            Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
-        } else {
-            Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
-        };
-        
+        let client2 = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
         let txid = client2.transaction_broadcast_raw(&tx_bytes);
 
         match txid {

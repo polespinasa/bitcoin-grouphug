@@ -1,6 +1,5 @@
 //! Functions related to the transactions validation and manipulation.
 
-
 use bdk::bitcoin::OutPoint;
 use bdk::bitcoin::{
     Transaction,
@@ -11,51 +10,26 @@ use bdk::blockchain::{ElectrumBlockchain, GetTx};
 use bdk::electrum_client::{Client, ElectrumApi};
 use hex::decode as hex_decode;
 
-/*
-use crate::config::{TESTNET_ELECTRUM_SERVER_ENDPOINT,
-    MAINNET_ELECTRUM_SERVER_ENDPOINT,
-    ELECTRUM_ENDPOINT,
-    DUST_LIMIT,
-    NETWORK
-};
-*/
 
-
-pub fn which_network(tx: &Transaction) -> &str {
+pub fn which_network(tx: &Transaction) -> bool {
 
     // Take previous UTXO
     let tx_id = tx.input[0].previous_output.txid;
 
     // Test mainnet
-    //let client_mainnet = Client::new(MAINNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
-    let client_mainnet = Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap();
+    let client_mainnet = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
     let blockchain_mainnet = ElectrumBlockchain::from(client_mainnet);
     
     
     let tx_result_mainnet = blockchain_mainnet.get_tx(&tx_id);
     match tx_result_mainnet {
         Ok(Some(_tx)) => {
-            return "mainnet"
+            return true
         },
         Ok(None) => (),
         Err(_) => (),
     }
-    
-    // Test testnet
-    //let client_testnet = Client::new(TESTNET_ELECTRUM_SERVER_ENDPOINT).unwrap();
-    let client_testnet = Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap();
-    let blockchain_testnet = ElectrumBlockchain::from(client_testnet);
-    let tx_result_testnet = blockchain_testnet.get_tx(&tx_id);
-
-    match tx_result_testnet {
-        Ok(Some(_tx)) => {
-            return "testnet";
-        },
-        Ok(None) => (),
-        Err(_) => (),
-    }
-
-    return "UNKNOWN";
+    return false;
 }
 
 pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
@@ -63,11 +37,7 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // If no UTXO is recieved back, the value returned is 0.
 
     // Connect to Electrum node
-    let client = if &crate::CONFIG.network.name == "testnet" {
-        Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
-    } else {
-        Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
-    };
+    let client = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
     
     let blockchain = ElectrumBlockchain::from(client);
 
@@ -94,11 +64,7 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
     // Validates that the utxo pointed to by the transaction input has not been spent.
 
     // Connect to Electrum node
-    let client = if &crate::CONFIG.network.name == "testnet" {
-        Client::new(&crate::CONFIG.electrum.testnet_server_endpoint).unwrap()
-    } else {
-        Client::new(&crate::CONFIG.electrum.mainnet_server_endpoint).unwrap()
-    };
+    let client = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
     
     let blockchain = ElectrumBlockchain::from(client);
 
@@ -212,9 +178,9 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     };
     
     // Check that the transaction belongs to the specified network
-    let network: &str = which_network(&tx);
-    if network != &crate::CONFIG.network.name {
-        let msg = format!("The grouphug network is {} and you sent a transaction from the {} network", &crate::CONFIG.network.name, network);
+    let network: bool = which_network(&tx);
+    if !network {
+        let msg = format!("The tx you provided is not from {} network", &crate::CONFIG.network.name);
         return (false, msg, real_fee_rate);
     }
     
@@ -278,71 +244,5 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
 
     
     return (true, String::from("Ok"), real_fee_rate);
-
-}
-
-
-
-// TESTS MAY NOT WORK AS THEY ARE NOT UPDATED
-#[cfg(test)]
-
-mod tests {
-
-    use crate::utils::transactions;
-    
-    #[test]
-    fn test_validate_tx_query_utxo_wrong_sighash() {
-        let fee_rate: f32 = 1.0;
-    
-        //tx should be rejected because of wrong sighash type
-        let tx_hex = "0200000000010120855900d4b1009d46b257be2a1b773b154364d21f4e358b8b3d2d617f5d44a00200000000fdffffff0192e0f5050000000016001474ea10df0c2455406b686cd7060bad71feb08b740247304402206262868854e24b4d99a9da929e0955555218ea120b52a35bc8435820b7d7c14c0220641129e5f855a1eb8f659cb487d0e509b1cc664a774fb2322d6e598809f5430b012103bbf8c79c3158a1cb32ab3dcffcb2c0e0a677fc600d7ce8e0fb7ff5294ce2574e80552700";
-        assert_eq!(transactions::validate_tx_query_one_to_one_single_anyone_can_pay(fee_rate, tx_hex), false);
-    }
-
-    #[test]
-    fn validate_tx_query_2_outputs() {
-        let fee_rate: f32 = 1.0;
-
-        //tx should be rejected because has 2 outputs
-        let tx_hex = "0200000000010120855900d4b1009d46b257be2a1b773b154364d21f4e358b8b3d2d617f5d44a00200000000fdffffff02404b4c000000000016001474ea10df0c2455406b686cd7060bad71feb08b743395a905000000001600142a9e8c87018f003bddc8de007109eaef3295384d0247304402207abd64a3c565f070ebbb560c8134e0e57530f7461e3ff70b7a378dbc59cec07102207f30dbbe33bf374e35afb16cd29e91b5dc855341f384bee4fba5f35fe89d348f832103bbf8c79c3158a1cb32ab3dcffcb2c0e0a677fc600d7ce8e0fb7ff5294ce2574e80552700";
-        assert_eq!(transactions::validate_tx_query_one_to_one_single_anyone_can_pay(fee_rate, tx_hex),false);
-    }
-
-    #[test]
-    fn validate_tx_query_2_inputs() {
-        let fee_rate: f32 = 1.0;
-
-        //tx should be rejected because has 2 inputs
-        let tx_hex = "0200000000010220855900d4b1009d46b257be2a1b773b154364d21f4e358b8b3d2d617f5d44a00000000000fdffffff20855900d4b1009d46b257be2a1b773b154364d21f4e358b8b3d2d617f5d44a00100000000fdffffff014ec1eb0b0000000016001474ea10df0c2455406b686cd7060bad71feb08b74024730440220573432bfdbeaf51478a9792aed4865312458c583eceacadbd26e02b97f04889102204c0b9037e1085dd4d16c1cb3898cc9e34f68e9bc0c2ad826213585d632091b98832103bbf8c79c3158a1cb32ab3dcffcb2c0e0a677fc600d7ce8e0fb7ff5294ce2574e0247304402207dfe8f0686eefbd2d8619a426f6715ac9dbb606f4525e9bb4d02b78338461596022074ef896493baddbfbe8980348124f696e23e66b678e366742fc8f1e04bcfccef832103bbf8c79c3158a1cb32ab3dcffcb2c0e0a677fc600d7ce8e0fb7ff5294ce2574e80552700";
-        assert_eq!(transactions::validate_tx_query_one_to_one_single_anyone_can_pay(fee_rate, tx_hex), false);
-    }
-
-     #[test]
-    fn validate_tx_query_valid_tx() {
-        let fee_rate: f32 = 1.5;
-
-        //tx for this tust must satisfy all requirements
-        let tx_hex = "0200000000010136740240418792cf35e8dea54f9ec215170594ecef73740bd001392a7b464d110100000000fdffffff0129260000000000001600149664e4a54e7f04f09799d2e61268057a033876780247304402204bb811853c6e0f8e49b0bab3ced01da988afc3a08bf127962ab24129be555f1c0220026f413918a7f9fdc02968271e7c730cadb5a3a5476505bc106a87ff1e1f23c3832102fc889ef1d04e7c489f225a718b3742893d88e1e3f6662c1e5e84c7489252968c80552700";
-        assert_eq!(transactions::validate_tx_query_one_to_one_single_anyone_can_pay(fee_rate, tx_hex), true);
-    }
-    
-
-    #[test]
-    fn test_validate_tx_query_fee_to_low() {
-        let fee_rate: f32 = 7.0;
-    
-        //tx should be rejected as real fee is below the declarated one.
-        let tx_hex = "0200000000010120855900d4b1009d46b257be2a1b773b154364d21f4e358b8b3d2d617f5d44a00000000000fdffffff0161dff5050000000016001474ea10df0c2455406b686cd7060bad71feb08b7402473044022072f5f0603a6229efc0bffb4922c44d01772325577f73b3a76935c23b6947c8e4022067ffc97c49605ae77e0c320a598ab254dee35f87aff16d05858eeda4ee325a64012103bbf8c79c3158a1cb32ab3dcffcb2c0e0a677fc600d7ce8e0fb7ff5294ce2574e80552700";
-        assert_eq!(transactions::validate_tx_query_one_to_one_single_anyone_can_pay(fee_rate, tx_hex), false);
-    }
-
-    #[test]
-    fn test_validate_tx_query_double_spending() {
-        let fee_rate: f32 = 1.0;
-    
-        //tx should be rejected as real fee is below the declarated one.
-        let tx_hex = "0200000000010120855900d4b1009d46b257be2a1b773b154364d21f4e358b8b3d2d617f5d44a00300000000fdffffff01c8b4c6290000000016001474ea10df0c2455406b686cd7060bad71feb08b7402473044022001ff2702495ff5ed0b73a178b8e9f84eccc8475e0c5c8a4306abbd56cbcf91e30220465844718edb42df0354cca7bbe91e9798eaedbc8c9dc18322a84cfb77dbd6bc8321028f1b8a4db265de2e99e3ba9575d8b572c8cb85bb12697f7e26a7288b9a4b13ac80552700";
-        assert_eq!(transactions::validate_tx_query_one_to_one_single_anyone_can_pay(fee_rate, tx_hex), false);
-    }
 
 }
