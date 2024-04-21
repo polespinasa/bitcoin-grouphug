@@ -3,28 +3,30 @@ mod utils;
 mod config;
 mod server;
 use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_pay;
-use once_cell::sync::Lazy;
 use crate::config::Config;
 use crate::server::group::Group;
 
 
 
 // External libraries
-use std::thread;
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
-use std::str;
-use std::fs;
-use std::env;
-use std::sync::{Arc, Mutex};
+use std::{
+    thread,
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+    str,
+    fs,
+    env,
+    sync::{Arc, Mutex},
+};
+use once_cell::sync::Lazy;
 use hex::decode as hex_decode;
 use bdk::bitcoin::{Transaction,consensus::encode::deserialize};
 
 pub static CONFIG: Lazy<Config> = Lazy::new(|| {
-    // Obtenir els arguments de la línia de comandes
+    
     let args: Vec<String> = env::args().collect();
 
-    // Especificar el camí per defecte del fitxer Config.toml
+    // Default Config.toml is same dir as the bin
     let default_path = "Config.toml";
 
     if args.len() > 2 {
@@ -32,7 +34,7 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
         std::process::exit(1);
     }
 
-    // Utilitzar l'argument proporcionat si existeix, sinó utilitzar el camí per defecte
+    // If there's an argumment try to use it as config path
     let config_path = if args.len() > 1 {
         &args[1]
     } else {

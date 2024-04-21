@@ -1,7 +1,7 @@
 //! Functions related to the transactions validation and manipulation.
 
-use bdk::bitcoin::OutPoint;
 use bdk::bitcoin::{
+    OutPoint,
     Transaction,
     consensus::encode::deserialize,
     blockdata::locktime::absolute::{Height, Time}};
