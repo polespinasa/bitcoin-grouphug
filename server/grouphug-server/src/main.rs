@@ -6,8 +6,6 @@ use crate::utils::transactions::validate_tx_query_one_to_one_single_anyone_can_p
 use crate::config::Config;
 use crate::server::group::Group;
 
-
-
 // External libraries
 use std::{
     thread,
@@ -51,12 +49,9 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
 });
 
 
-
 // Array with Group list
 type GroupHug = Group;
 static GLOBAL_GROUPS: Lazy<Arc<Mutex<Vec<GroupHug>>>> = Lazy::new(|| Arc::new(Mutex::new(Vec::new())));
-
-
 
 fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
     // Check if an input from a transaction is already duplicated on another group
@@ -84,7 +79,7 @@ fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
     for group in groups.iter() {
         // Checks if a tx input is in the group
         if group.contains_txin(&txin) {
-            println!("Transaction was rejected, Error: transaction input is already in a group\n");
+            eprintln!("Transaction was rejected, Error: transaction input is already in a group\n");
             return (true, String::from("Transaction input is already in a group"));
         }
     }
@@ -103,7 +98,7 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
     if !valid {
         // should send an error message as the transaction has an invalid format or does not match some rule
         let error_msg = format!("Error: {}\n", msg);
-        println!("Transaction was rejected, {}\n", error_msg);
+        eprintln!("Transaction was rejected, {}\n", error_msg);
         stream.write(error_msg.as_bytes()).unwrap();
         return
     }
@@ -191,7 +186,7 @@ fn handle_client(mut stream: TcpStream) {
         if command_parts.len() != 2 {
             // If there's more than two arguments on the call something is worng.
             // Expected format: "add_tx raw_tx_data"
-            println!("Client {} sent a command with wrong number of arguments: {}\n", stream.peer_addr().unwrap(), command_string.trim());
+            eprintln!("Client {} sent a command with wrong number of arguments: {}\n", stream.peer_addr().unwrap(), command_string.trim());
             stream.write(b"Two arguments are expected\n").unwrap();
             continue;
         }
@@ -201,7 +196,7 @@ fn handle_client(mut stream: TcpStream) {
             // This allows to add more commands in the future
             "add_tx" => handle_addtx(arg, stream.try_clone().unwrap()),
             _ => {
-                println!("Client {} sent an unknown command: {}\n", stream.peer_addr().unwrap(), command);
+                eprintln!("Client {} sent an unknown command: {}\n", stream.peer_addr().unwrap(), command);
                 stream.write(b"Unknown command sent\n").unwrap();
             },
         }

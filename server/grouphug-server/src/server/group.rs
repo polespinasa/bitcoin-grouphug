@@ -104,19 +104,19 @@ impl Group {
                                 i += 1;
                             }
                             else {
-                                println!("Double spending detected on a group, deleting that transaction...");
+                                eprintln!("Double spending detected on a group, deleting that transaction...");
                                 self.transactions.remove(i);
                                 return false;
                             }
                         },
                         Err(_e) => {
-                            println!("Error querying for the UTXO");
+                            eprintln!("Error querying for the UTXO");
                             return false;
                         }
                     }
                 },
                 Ok(None) => {
-                    println!("Petition succeed but no tx was returned");
+                    eprintln!("Petition succeed but no tx was returned");
                     return false;
                 },
                 Err(_e) => {
@@ -147,7 +147,7 @@ impl Group {
                 return true;
             },
             Err(e) => {
-                println!("There is an error broadcasting the transaction group: {:?}", e);
+                eprintln!("There is an error broadcasting the transaction group: {:?}", e);
                 return false;
             }
     

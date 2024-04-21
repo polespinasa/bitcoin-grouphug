@@ -48,12 +48,12 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
             return tx.output[utxo.vout as usize].value as f32;
         },
         Ok(None) => {
-            println!("Previous transaction query returned NONE");
+            eprintln!("Previous transaction query returned NONE");
             return 0.0;
         }
         Err(erro) => {
-            println!("{}", erro);
-            println!("There is an error retrieving previous transaction");
+            eprintln!("There is an error retrieving previous transaction");
+            eprintln!("{}", erro);
             return 0.0;
         }
 
@@ -85,22 +85,22 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
                         return true;
                     }
                     else {
-                        println!("Transaction already spent");
+                        eprintln!("Transaction already spent");
                         return false;
                     }
                 },
                 Err(_e) => {
-                    println!("Error querying for the UTXO");
+                    eprintln!("Error querying for the UTXO");
                     return false;
                 }
             }
         },
         Ok(None) => {
-            print!("Petition succeed but no tx was returned");
+            eprint!("Petition succeed but no tx was returned");
             return false;
         },
         Err(_e) => {
-            println!("Could not retrieve previous transaction");
+            eprintln!("Could not retrieve previous transaction");
             return false;
         }
     }
