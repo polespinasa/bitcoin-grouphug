@@ -27,6 +27,11 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     // Especificar el camí per defecte del fitxer Config.toml
     let default_path = "Config.toml";
 
+    if args.len() > 2 {
+        eprintln!("Only 1 argument accepted");
+        std::process::exit(1);
+    }
+
     // Utilitzar l'argument proporcionat si existeix, sinó utilitzar el camí per defecte
     let config_path = if args.len() > 1 {
         &args[1]
@@ -42,18 +47,6 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
 
     config
 });
-
-/*
-pub static CONFIG: Lazy<Config> = Lazy::new(|| {
-    let contents = fs::read_to_string("Config.toml")
-        .expect("Something went wrong reading the file");
-
-    let config: Config = toml::from_str(&contents)
-        .expect("Unable to parse the toml file");
-
-    config
-});
-*/
 
 
 
@@ -216,13 +209,7 @@ fn handle_client(mut stream: TcpStream) {
 
 
 fn main() {
-     
-
-    let args: Vec<String> = env::args().collect();
-    //if args.len() != 1 {
-    //    eprintln!("No arguments accepted");
-    //}
-        
+           
     // Fromat endpoint data from config file
     let endpoint: String = format!("{}:{}", &crate::CONFIG.server.ip, &crate::CONFIG.server.port);
     
