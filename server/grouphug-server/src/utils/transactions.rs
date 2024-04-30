@@ -61,49 +61,50 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
 }
 
 pub fn previous_utxo_spent(tx: &Transaction) -> bool {
-    // Validates that the utxo pointed to by the transaction input has not been spent.
+    // Validates that the UTXOs pointed to by the transaction inputs have not been spent.
 
     // Connect to Electrum node
     let client = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
     
     let blockchain = ElectrumBlockchain::from(client);
 
-    // Get the previous transaction from the input
-    let outpoint = tx.input[0].previous_output;
-    let tx_result = blockchain.get_tx(&outpoint.txid);
-
-    match tx_result {
-        Ok(Some(tx)) => {
-
-            // validate if the output has been spent
-            let utxo_script_pubkey = &tx.output[outpoint.vout as usize].script_pubkey;
-            let utxo_list = blockchain.script_list_unspent(&utxo_script_pubkey);
-
-            match utxo_list {
-                Ok(returned_utxo_list) => {
-                    if returned_utxo_list.len() > 0 {
-                        return true;
-                    }
-                    else {
-                        eprintln!("Transaction already spent");
+    for i in 0..tx.input.len() {
+        // Get the previous transaction from the input
+        let outpoint = tx.input[i].previous_output;
+        let tx_result = blockchain.get_tx(&outpoint.txid);
+    
+        match tx_result {
+            Ok(Some(tx)) => {
+    
+                // validate if the output has been spent
+                let utxo_script_pubkey = &tx.output[outpoint.vout as usize].script_pubkey;
+                let utxo_list = blockchain.script_list_unspent(&utxo_script_pubkey);
+    
+                match utxo_list {
+                    Ok(returned_utxo_list) => {
+                        if returned_utxo_list.len() == 0 {
+                            eprintln!("Transaction already spent");
+                            return false;
+                        }
+                    },
+                    Err(_e) => {
+                        eprintln!("Error querying for the UTXO");
                         return false;
                     }
-                },
-                Err(_e) => {
-                    eprintln!("Error querying for the UTXO");
-                    return false;
                 }
+            },
+            Ok(None) => {
+                eprint!("Petition succeed but no tx was returned");
+                return false;
+            },
+            Err(_e) => {
+                eprintln!("Could not retrieve previous transaction");
+                return false;
             }
-        },
-        Ok(None) => {
-            eprint!("Petition succeed but no tx was returned");
-            return false;
-        },
-        Err(_e) => {
-            eprintln!("Could not retrieve previous transaction");
-            return false;
         }
     }
+
+    return true;
 }
 
 pub fn check_absolute_locktime(tx: &Transaction) -> bool {
@@ -115,7 +116,13 @@ pub fn check_absolute_locktime(tx: &Transaction) -> bool {
 
 pub fn check_dust_limit(tx: &Transaction) -> bool {
     // Return true or false if the tx value is >= than the DUST_LIMIT.
-    return tx.output[0].value >= crate::CONFIG.dust.limit;
+    for output in &tx.output {
+        if output.value < crate::CONFIG.dust.limit {
+            return false;
+        }
+
+    }
+    return true;
 }
 
 pub fn check_tx_version(tx: &Transaction) -> bool {
@@ -129,28 +136,28 @@ pub fn get_num_inputs_and_outputs(tx: &Transaction) -> (usize, usize) {
 }
 
 pub fn check_sighash_single_anyone_can_pay(tx: &Transaction) -> bool {
-    // Ensure that the signature is using SIGHASH_SINGLE|ANYONECANPAY
-    // Script must be simple P2WPKH (witness: <signature> <pubkey>)
+    // Ensure that all signatures are using SIGHASH_SINGLE|ANYONECANPAY
+    // All scripts must be simple P2WPKH (witness: <signature> <pubkey>)
 
-    if tx.input[0].witness.len() != 2 {
-        return false;
-    }
-
-    let input_query = tx.input[0].witness.to_vec()[0].clone();
-
-    match input_query.last() {
-        Some(input) => {
-            // 131 decimal representation of 0x83 designated to SIGHASH_SINGLE | ANYONECANPAY
-            if *input != 131 as u8{
-                return false;
-            }
-        },
-        None => {
-            // There's no witness
+    for i in 0..tx.input.len() {
+        if tx.input[i].witness.len() != 2 {
             return false;
         }
+        let input_query = tx.input[i].witness.to_vec()[0].clone();
+        
+        match input_query.last() {
+            Some(input) => {
+                // 131 decimal representation of 0x83 designated to SIGHASH_SINGLE | ANYONECANPAY
+                if *input != 131 as u8{
+                    return false;
+                }
+            },
+            None => {
+                // There's no witness
+                return false;
+            }
+        }
     }
-
     return true;
 }
 
@@ -184,10 +191,10 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
         return (false, msg, real_fee_rate);
     }
     
-    // Check that there is only one input
+    // Check that the number of inputs and outputs is the same
     let num_inputs_and_outputs: (usize, usize) = get_num_inputs_and_outputs(&tx);
-    if  num_inputs_and_outputs != (1,1) {
-        let msg = format!("Number of inputs and outputs must be 1. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
+    if  num_inputs_and_outputs.0 != num_inputs_and_outputs.1 {
+        let msg = format!("Number of inputs and outputs must be equal. Inputs = {} | Outputs = {}", num_inputs_and_outputs.0, num_inputs_and_outputs.1);
         return (false, msg, real_fee_rate);
     }
     
@@ -213,15 +220,19 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     }
 
     
-    // Check that previous utxo value is not 0
-    // Aka is not an op_return
-    let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[0].previous_output);
-    if previous_utxo_value == 0.0 {
-        let msg = String::from("There's an error loading the previous utxo value");
-        return (false,msg, real_fee_rate);
-    } else{
-        real_fee_rate = (previous_utxo_value - tx.output[0].value as f32)/tx.vsize() as f32;
+    // Check that the previous utxos values are not 0
+    // Aka there is no OP_RETURN
+    let mut total_fee: f32 = 0.0;
+    for i in 0..tx.input.len() {
+        let previous_utxo_value: f32 = get_previous_utxo_value(tx.input[i].previous_output);
+        if previous_utxo_value == 0.0 {
+            let msg = String::from("There's an error loading the previous utxo value");
+            return (false,msg, real_fee_rate);
+        } else{
+            total_fee += previous_utxo_value - tx.output[i].value as f32;   
+        }
     }
+    real_fee_rate = total_fee/tx.vsize() as f32;
 
     // Check that the fee rate is not under 1sat/vb
     if real_fee_rate <= 1.01 {
