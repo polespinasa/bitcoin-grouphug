@@ -70,19 +70,19 @@ fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
     };
 
     
-    // We asume we will never see a transaction with more than one input
-    // (This is checked before this function is called)
-    let txin = &tx.input[0];
-
     // Lock the global groups and iterate over them
     let groups = GLOBAL_GROUPS.lock().unwrap();
-    for group in groups.iter() {
-        // Checks if a tx input is in the group
-        if group.contains_txin(&txin) {
-            eprintln!("Transaction was rejected, Error: transaction input is already in a group\n");
-            return (true, String::from("Transaction input is already in a group"));
+    
+    for txin in tx.input.iter(){
+        for group in groups.iter() {
+            // Checks if a tx input is in the group
+            if group.contains_txin(&txin) {
+                eprintln!("Transaction was rejected, Error: transaction input is already in a group\n");
+                return (true, String::from("Transaction input is already in a group"));
+            }
         }
     }
+    
 
     return (false, String::from("Ok\n"));
 
