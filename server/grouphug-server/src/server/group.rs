@@ -50,12 +50,14 @@ impl Group {
 
         let tx: Transaction = deserialize(&hex_decode(tx_hex).unwrap()).unwrap();
 
-        self.transactions.push((tx.input[0].clone(), tx.output[0].clone()));
+        for i in 0..tx.input.len() {
+            self.transactions.push((tx.input[i].clone(), tx.output[i].clone()));
+        }
 
         println!("Tx {} added to group with fee_rate {}sat/vB", tx.txid(), self.fee_rate);
 
         // Check if the group should be closed according to the MAX_SIZE limit established in config file
-        if self.transactions.len() == crate::CONFIG.group.max_size {
+        if self.transactions.len() >= crate::CONFIG.group.max_size {
             return self.close_group();
         }
         return false;
