@@ -162,8 +162,9 @@ fn handle_client(mut stream: TcpStream) {
     else if &crate::CONFIG.network.name == "mainnet" {
         stream.write(b"MAINNET\n").unwrap();
     }
-
-    let mut buffer = [0; 512];
+    
+    // 100KB size for large transactions
+    let mut buffer = [0; 100*1024]; 
     loop {
         let nbytes = stream.read(&mut buffer).unwrap();
         if nbytes == 0 {
