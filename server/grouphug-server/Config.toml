@@ -1,6 +1,8 @@
 [electrum]
-# mainnet_server_endpoint = "ssl://electrum.blockstream.info:50002"
+#MAINNET BLOCKSTREAM ELECTRUM ENDPOINT = "ssl://electrum.blockstream.info:50002"
+#TESTNET BLOCKSTREAM ELECTRUM ENDPOINT = "ssl://electrum.blockstream.info:60002"
 endpoint = "ssl://electrum.blockstream.info:60002"
+certificate_validation = true
 
 [group]
 max_time = 300

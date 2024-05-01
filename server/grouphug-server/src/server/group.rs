@@ -10,7 +10,7 @@ use bdk::bitcoin::{
     consensus::encode::deserialize, 
     consensus::encode::serialize_hex
 };
-use bdk::electrum_client::{Client, ElectrumApi};
+use bdk::electrum_client::{Client, ConfigBuilder, ElectrumApi};
 use bdk::blockchain::{ElectrumBlockchain, GetTx};
 
 
@@ -83,9 +83,8 @@ impl Group {
         // Finalize the transaction and send it to the network
     
         // Connect to Electrum node
-        let client = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
-
-        
+        let config = ConfigBuilder::new().validate_domain(crate::CONFIG.electrum.certificate_validation).build();
+        let client = Client::from_config(&crate::CONFIG.electrum.endpoint, config.clone()).unwrap();
         let blockchain = ElectrumBlockchain::from(client);
         
         // Check that the transactions included in the group have not been already spent
@@ -140,7 +139,7 @@ impl Group {
 
         // broadcast the transaction
         // There's a issue with client 1 here... TODO FIX
-        let client2 = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
+        let client2 = Client::from_config(&crate::CONFIG.electrum.endpoint, config.clone()).unwrap();
         let txid = client2.transaction_broadcast_raw(&tx_bytes);
 
         match txid {

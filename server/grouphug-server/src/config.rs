@@ -13,6 +13,7 @@ pub struct Config {
 #[derive(Deserialize)]
 pub struct Electrum {
     pub endpoint: String,
+    pub certificate_validation: bool,
 }
 
 #[derive(Deserialize)]

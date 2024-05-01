@@ -7,7 +7,7 @@ use bdk::bitcoin::{
     blockdata::locktime::absolute::{Height, Time}};
 
 use bdk::blockchain::{ElectrumBlockchain, GetTx};
-use bdk::electrum_client::{Client, ElectrumApi};
+use bdk::electrum_client::{Client, ConfigBuilder, ElectrumApi};
 use hex::decode as hex_decode;
 
 
@@ -16,18 +16,20 @@ pub fn which_network(tx: &Transaction) -> bool {
     // Take previous UTXO
     let tx_id = tx.input[0].previous_output.txid;
 
-    // Test mainnet
-    let client_mainnet = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
-    let blockchain_mainnet = ElectrumBlockchain::from(client_mainnet);
+    let config = ConfigBuilder::new().validate_domain(crate::CONFIG.electrum.certificate_validation).build();
+    let client = Client::from_config(&crate::CONFIG.electrum.endpoint, config.clone()).unwrap();
+    let blockchain = ElectrumBlockchain::from(client);
     
     
-    let tx_result_mainnet = blockchain_mainnet.get_tx(&tx_id);
-    match tx_result_mainnet {
+    let tx_result = blockchain.get_tx(&tx_id);
+    match tx_result {
         Ok(Some(_tx)) => {
             return true
         },
         Ok(None) => (),
-        Err(_) => (),
+        Err(e) => {
+            println!("Error: {:?}", e);
+        },
     }
     return false;
 }
@@ -37,8 +39,8 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
     // If no UTXO is recieved back, the value returned is 0.
 
     // Connect to Electrum node
-    let client = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
-    
+    let config = ConfigBuilder::new().validate_domain(crate::CONFIG.electrum.certificate_validation).build();
+    let client = Client::from_config(&crate::CONFIG.electrum.endpoint, config.clone()).unwrap();
     let blockchain = ElectrumBlockchain::from(client);
 
     let tx_result = blockchain.get_tx(&utxo.txid);
@@ -64,8 +66,8 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
     // Validates that the UTXOs pointed to by the transaction inputs have not been spent.
 
     // Connect to Electrum node
-    let client = Client::new(&crate::CONFIG.electrum.endpoint).unwrap();
-    
+    let config = ConfigBuilder::new().validate_domain(crate::CONFIG.electrum.certificate_validation).build();
+    let client = Client::from_config(&crate::CONFIG.electrum.endpoint, config.clone()).unwrap();
     let blockchain = ElectrumBlockchain::from(client);
 
     for i in 0..tx.input.len() {
