@@ -69,6 +69,7 @@ The GroupHug provides a number of configurable parameters to modify its behavior
 
 ### Server
 `ip` -> Binding IP.
+
 `port` -> Binding port.
 
 ### Network
