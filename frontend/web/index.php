@@ -52,7 +52,7 @@ $app->post('/', function (ServerRequestInterface $request, ResponseInterface $re
 
 function processTx(mixed $form, $conn): array
 {
-    if (!is_array($form) || empty($form['tx']) || strlen($form['tx']) > 100*1024 || !preg_match('/^([0-9a-fA-F]{2})+$/', $form['tx'])) {
+    if (!is_array($form) || empty($form['tx']) || strlen($form['tx']) > 100 * 1024 || !preg_match('/^([0-9a-fA-F]{2})+$/', $form['tx'])) {
         return ['class' => 'alert-danger', 'message' => 'Invalid transaction received.'];
     }
 
