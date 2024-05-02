@@ -13,7 +13,7 @@
 <div class="container mt-5">
     <div class="row">
         <div class="col-md-6 offset-md-3">
-            <h2 class="mb-4">Bitcoin GroupHug {% if service_down %}<span class="badge bg-dark">Down</span>{% elseif chain == 'MAINNET' %}<span class="badge bg-success">Mainnet</span>{% else %}<span class="badge bg-warning">Testnet</span>{% endif %}</h2>
+            <h2 class="mb-4">Bitcoin GroupHug {% if service_down %}<span class="badge bg-dark">Down</span>{% elseif chain == 'MAINNET' %}<span class="badge bg-success">Mainnet</span>{% elseif chain == 'SIGNET' %}<span class="badge bg-info">Signet</span>{% else %}<span class="badge bg-warning">Testnet</span>{% endif %}</h2>
 
             {% if alert is defined %}
             <div class="col-md-12 alert {{ alert.class }}" role="alert">{{ alert.message }}</div>
