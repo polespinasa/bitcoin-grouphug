@@ -28,7 +28,7 @@ Run the GroupHug server:
 
     $ ./grouphug_server
 
-The Config.toml configuration file must be located in the same directory as the binary.
+The `Config.toml` configuration file must be located in the same directory as the binary.
 
 The server will be running once you see something similar to:
 
