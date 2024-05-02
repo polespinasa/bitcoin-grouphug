@@ -26,7 +26,9 @@ To install it, move it to a directory in your `$PATH` such as `$HOME/bin` or `/u
 
 Run the GroupHug server:
 
-    $ ./grouphug-server
+    $ ./grouphug_server
+
+The Config.toml configuration file must be located in the same directory as the binary.
 
 The server will be running once you see something similar to:
 
