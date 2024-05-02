@@ -167,12 +167,11 @@ pub fn validate_tx_query_one_to_one_single_anyone_can_pay(tx_hex: &str ) -> (boo
     // Validate that a given transaction (in hex) is valid according to the rules.
     // Returns true if the tx is valid. String with the error message if any and a f32 with the fee_rate of the transaction    
     // Rules:
-    //  - Should only be 1 input.
-    //  - Should only be 1 output.
+    //  - Must have same number of inputs and outputs.
     //  - The input cannot be spent before must be and UTXO.
     //  - Signature must be SIGHASH_SINGLE | ANYONECANPAY.
-    //  - Should have absolute locktime to 0.
-    //  - Fee rate should be bigger than 1.01sat/vb
+    //  - Must have absolute locktime to 0.
+    //  - Fee rate must be bigger than 1.01sat/vb
     
     
     let mut real_fee_rate: f32 = 0.0;
