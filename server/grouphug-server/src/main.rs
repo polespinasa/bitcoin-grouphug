@@ -88,6 +88,24 @@ fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
 
 }
 
+fn handle_get_groups_info(mut stream: TcpStream) {
+    let groups = GLOBAL_GROUPS.lock().unwrap();
+    
+    if groups.len() == 0 {
+        let msg = format!("There's no groups\n");
+        stream.write(msg.as_bytes()).unwrap();
+    }
+    else {
+        for group in groups.iter() {
+            let msg = format!("Fee: {}, Size: {}/{}\n", group.fee_rate, group.get_num_transactions(), &crate::CONFIG.group.max_size);
+            stream.write(msg.as_bytes()).unwrap();
+        }   
+    }
+
+    let end_line = format!("EOF\n");
+    stream.write(end_line.as_bytes()).unwrap();
+    return
+}
 fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
     // Validate that the tx has the correct format and satisfies all the rules
@@ -187,18 +205,27 @@ fn handle_client(mut stream: TcpStream) {
 
         let command_parts: Vec<&str> = command_string.trim().split_whitespace().collect();
         
-        if command_parts.len() != 2 {
+        
+        if command_parts.len() > 2 {
             // If there's more than two arguments on the call something is worng.
             // Expected format: "add_tx raw_tx_data"
             eprintln!("Client {} sent a command with wrong number of arguments: {}\n", stream.peer_addr().unwrap(), command_string.trim());
-            stream.write(b"Two arguments are expected\n").unwrap();
+            stream.write(b"One or two arguments are expected\n").unwrap();
             continue;
         }
-        let (command, arg) = (command_parts[0], command_parts[1]);
-        
+        let command;
+        let mut arg = "";
+        if command_parts.len() == 2 {
+            (command, arg) = (command_parts[0], command_parts[1]);
+        }
+        else {
+            command = command_parts[0];
+        }
+
         match command {
             // This allows to add more commands in the future
             "add_tx" => handle_addtx(arg, stream.try_clone().unwrap()),
+            "get_groupsInfo" => handle_get_groups_info(stream.try_clone().unwrap()),
             _ => {
                 eprintln!("Client {} sent an unknown command: {}\n", stream.peer_addr().unwrap(), command);
                 stream.write(b"Unknown command sent\n").unwrap();

@@ -37,6 +37,11 @@ impl Group {
         }
     }
 
+    pub fn get_num_transactions(&self) -> usize {
+        // Return number of transactions in the group
+        return self.transactions.len()
+    }
+
     pub fn contains_txin(&self, txin: &TxIn) -> bool {
         // Return true or false if the given tx input is already in this group
         self.transactions.iter().any(|(t, _)| t.previous_output == txin.previous_output)
