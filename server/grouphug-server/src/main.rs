@@ -19,6 +19,9 @@ use std::{
 use once_cell::sync::Lazy;
 use hex::decode as hex_decode;
 use bdk::bitcoin::{Transaction,consensus::encode::deserialize};
+use bdk::electrum_client::{Client, ConfigBuilder, ElectrumApi};
+use bdk::blockchain::{ElectrumBlockchain};
+use bdk::{FeeRate};
 
 pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     
@@ -106,6 +109,44 @@ fn handle_get_groups_info(mut stream: TcpStream) {
     stream.write(end_line.as_bytes()).unwrap();
     return
 }
+
+fn close_group_by_fee() {
+    // Check the actual feerate for the network and close all groups that have a fee rate bigger than the actual fee rate by 2 sat/vb.
+    
+    let config = ConfigBuilder::new().validate_domain(crate::CONFIG.electrum.certificate_validation).build();
+    let client = Client::from_config(&crate::CONFIG.electrum.endpoint, config.clone()).unwrap();
+    let blockchain = ElectrumBlockchain::from(client);
+
+    let target: usize = 1;
+    let mut matching_fee_rates: Vec<f32> = Vec::new();
+
+    let mut groups = GLOBAL_GROUPS.lock().unwrap();
+    match blockchain.estimate_fee(target) {
+        Ok(rate) => {
+            let fee_rate = FeeRate::from_btc_per_kvb(rate as f32);
+            // compare needed fee rate for the target confirmation with the group fee rate
+            // close the ones that pay more than what is needed
+            for group in groups.iter_mut() {
+                if (fee_rate.as_sat_per_vb() as f32) < ((group.fee_rate - 2.0) as f32) {
+                    if group.close_group() {
+                        matching_fee_rates.push(group.fee_rate);
+                    }  
+                }
+            }
+        },
+        Err(e) => {
+            eprintln!("There was an error estimating fees for the next {:?} blocks: {:?}", target, e);
+        }
+    }
+
+    for rate in matching_fee_rates {
+        // delete the closed groups from the group list 
+        groups.retain(|g| g.fee_rate != rate);
+    }
+    return;    
+    
+}
+
 fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
     // Validate that the tx has the correct format and satisfies all the rules
@@ -134,33 +175,35 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
     // Calculate the group fee rate.
     let expected_group_fee = ((fee_rate / &crate::CONFIG.fee.range).floor() * &crate::CONFIG.fee.range) as f32;
 
-    // Unlock the GLOBAL_GROUPS variable
-    let mut groups = GLOBAL_GROUPS.lock().unwrap();
+    { // Use this so we unlock the GLOBAL_GROUPS variable after using it
 
-    // Search for the group corresponing to the transaction fee rate
-    let group = groups.iter_mut().find(|g| g.fee_rate == expected_group_fee);
+        // Unlock the GLOBAL_GROUPS variable
+        let mut groups = GLOBAL_GROUPS.lock().unwrap();
 
-    let close_group;
-    match group {
-        Some(group) => {
-            // If some then the group already exist so we add the tx to that group
-            close_group = group.add_tx(transaction);
-        },
-        None => {
-            // If none then there is no group for this fee rate so we create one
-            let mut new_group = Group::new(expected_group_fee);
-            println!("New group created with fee_rate {}sat/vB", new_group.fee_rate);
-            close_group = new_group.add_tx(transaction);
-            groups.push(new_group);
+        // Search for the group corresponing to the transaction fee rate
+        let group = groups.iter_mut().find(|g| g.fee_rate == expected_group_fee);
+
+        let close_group;
+        match group {
+            Some(group) => {
+                // If some then the group already exist so we add the tx to that group
+                close_group = group.add_tx(transaction);
+            },
+            None => {
+                // If none then there is no group for this fee rate so we create one
+                let mut new_group = Group::new(expected_group_fee);
+                println!("New group created with fee_rate {}sat/vB", new_group.fee_rate);
+                close_group = new_group.add_tx(transaction);
+                groups.push(new_group);
+            }
+        }
+
+        if close_group {
+            // If the group has been closed during the add_tx function we delete it from the groups vector
+            groups.retain(|g| g.fee_rate != expected_group_fee);
         }
     }
-
-    if close_group {
-        // If the group has been closed during the add_tx function we delete it from the groups vector
-        groups.retain(|g| g.fee_rate != expected_group_fee);
-    }
-    
-
+    close_group_by_fee();
     // Send an OK message if the tx was added successfuly
     stream.write(msg.as_bytes()).unwrap();
 

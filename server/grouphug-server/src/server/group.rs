@@ -84,7 +84,7 @@ impl Group {
     }
     
 
-    fn close_group(&mut self) -> bool {
+    pub fn close_group(&mut self) -> bool {
         // Finalize the transaction and send it to the network
     
         // Connect to Electrum node
