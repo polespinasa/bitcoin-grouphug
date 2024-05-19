@@ -1,5 +1,5 @@
 //! Functions related to the transactions validation and manipulation.
-
+use chrono::Utc;
 use bdk::bitcoin::{
     OutPoint,
     Transaction,
@@ -28,7 +28,7 @@ pub fn which_network(tx: &Transaction) -> bool {
         },
         Ok(None) => (),
         Err(e) => {
-            println!("Error: {:?}", e);
+            println!("{}: Error: {:?}", Utc::now(), e);
         },
     }
     return false;
@@ -50,12 +50,12 @@ pub fn get_previous_utxo_value(utxo: OutPoint) -> f32 {
             return tx.output[utxo.vout as usize].value as f32;
         },
         Ok(None) => {
-            eprintln!("Previous transaction query returned NONE");
+            eprintln!("{}: Previous transaction query returned NONE", Utc::now());
             return 0.0;
         }
         Err(erro) => {
-            eprintln!("There is an error retrieving previous transaction");
-            eprintln!("{}", erro);
+            eprintln!("{}: There is an error retrieving previous transaction", Utc::now());
+            eprintln!("{}: {}", Utc::now(), erro);
             return 0.0;
         }
 
@@ -85,22 +85,22 @@ pub fn previous_utxo_spent(tx: &Transaction) -> bool {
                 match utxo_list {
                     Ok(returned_utxo_list) => {
                         if returned_utxo_list.len() == 0 {
-                            eprintln!("Transaction already spent");
+                            eprintln!("{}: Transaction already spent", Utc::now());
                             return false;
                         }
                     },
                     Err(_e) => {
-                        eprintln!("Error querying for the UTXO");
+                        eprintln!("{}: Error querying for the UTXO", Utc::now());
                         return false;
                     }
                 }
             },
             Ok(None) => {
-                eprint!("Petition succeed but no tx was returned");
+                eprint!("{}: Petition succeed but no tx was returned", Utc::now());
                 return false;
             },
             Err(_e) => {
-                eprintln!("Could not retrieve previous transaction");
+                eprintln!("{}: Could not retrieve previous transaction", Utc::now());
                 return false;
             }
         }

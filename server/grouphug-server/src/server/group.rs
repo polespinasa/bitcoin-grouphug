@@ -61,7 +61,7 @@ impl Group {
             self.transactions.push((tx.input[i].clone(), tx.output[i].clone()));
         }
 
-        println!("Tx {} added to group with fee_rate {}sat/vB", tx.txid(), self.fee_rate);
+        println!("{}: Tx {} added to group with fee_rate {}sat/vB", Utc::now(), tx.txid(), self.fee_rate);
 
         // Check if the group should be closed according to the MAX_SIZE limit established in config file
         if self.transactions.len() >= crate::CONFIG.group.max_size {
@@ -112,23 +112,23 @@ impl Group {
                                 i += 1;
                             }
                             else {
-                                eprintln!("Double spending detected on a group, deleting that transaction...");
+                                eprintln!("{}: Double spending detected on a group, deleting that transaction...", Utc::now());
                                 self.transactions.remove(i);
                                 return false;
                             }
                         },
                         Err(_e) => {
-                            eprintln!("Error querying for the UTXO");
+                            eprintln!("{}: Error querying for the UTXO", Utc::now());
                             return false;
                         }
                     }
                 },
                 Ok(None) => {
-                    eprintln!("Petition succeed but no tx was returned");
+                    eprintln!("{}: Petition succeed but no tx was returned", Utc::now());
                     return false;
                 },
                 Err(_e) => {
-                    println!("Could not retrieve previous transaction");
+                    println!("{}: Could not retrieve previous transaction", Utc::now());
                     return false;
                 }
             }
@@ -139,8 +139,8 @@ impl Group {
         self.create_group_transaction();
         
         let tx_hex = serialize_hex(&self.transaction_group);
-        println!("Group transaction: \n");
-        println!("{:?}", tx_hex);
+        println!("{}: Group transaction: \n", Utc::now());
+        println!("{}: {:?}", Utc::now(), tx_hex);
 
         let tx_bytes = hex_decode(tx_hex).unwrap();
 
@@ -151,11 +151,11 @@ impl Group {
 
         match txid {
             Ok(id) => {
-                println!("Group {}sat/vb closed! Transaction broadcasted with TXID: {}", self.fee_rate, id);
+                println!("{}: Group {}sat/vb closed! Transaction broadcasted with TXID: {}", Utc::now(), self.fee_rate, id);
                 return true;
             },
             Err(e) => {
-                eprintln!("There is an error broadcasting the transaction group: {:?}", e);
+                eprintln!("{}: There is an error broadcasting the transaction group: {:?}", Utc::now(), e);
                 return false;
             }
     

@@ -33,7 +33,7 @@ pub static CONFIG: Lazy<Config> = Lazy::new(|| {
     let default_path = "Config.toml";
 
     if args.len() > 2 {
-        eprintln!("Only 1 argument accepted");
+        eprintln!("{}: Only 1 argument accepted", Utc::now());
         std::process::exit(1);
     }
 
@@ -82,7 +82,7 @@ fn check_double_spending_other_group(tx_hex: &str) -> (bool, String) {
         for group in groups.iter() {
             // Checks if a tx input is in the group
             if group.contains_txin(&txin) {
-                eprintln!("Transaction was rejected, Error: transaction input is already in a group\n");
+                eprintln!("{}: Transaction was rejected, Error: transaction input is already in a group\n", Utc::now());
                 return (true, String::from("Transaction input is already in a group"));
             }
         }
@@ -137,7 +137,7 @@ fn close_group_by_fee() {
             }
         },
         Err(e) => {
-            eprintln!("There was an error estimating fees for the next {:?} blocks: {:?}", target, e);
+            eprintln!("{}: There was an error estimating fees for the next {:?} blocks: {:?}",Utc::now(), target, e);
         }
     }
 
@@ -154,12 +154,12 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
     // Validate that the tx has the correct format and satisfies all the rules
     let (valid, msg, fee_rate) = validate_tx_query_one_to_one_single_anyone_can_pay(transaction);
 
-    println!("Client {} sent a new raw transaction: {}",stream.peer_addr().unwrap(), transaction);
+    println!("{}: Client {} sent a new raw transaction: {}", Utc::now(), stream.peer_addr().unwrap(), transaction);
 
     if !valid {
         // should send an error message as the transaction has an invalid format or does not match some rule
         let error_msg = format!("Error: {}\n", msg);
-        eprintln!("Transaction was rejected, {}\n", error_msg);
+        eprintln!("{}: Transaction was rejected, {}\n", Utc::now(), error_msg);
         stream.write(error_msg.as_bytes()).unwrap();
         return
     }
@@ -194,7 +194,7 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
             None => {
                 // If none then there is no group for this fee rate so we create one
                 let mut new_group = Group::new(expected_group_fee);
-                println!("New group created with fee_rate {}sat/vB", new_group.fee_rate);
+                println!("{}: New group created with fee_rate {}sat/vB", Utc::now(), new_group.fee_rate);
                 close_group = new_group.add_tx(transaction);
                 groups.push(new_group);
             }
@@ -215,7 +215,7 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
 
 fn handle_client(mut stream: TcpStream) {
 
-    println!("New user connected: {}\n", stream.peer_addr().unwrap());
+    println!("{}: New user connected: {}\n", Utc::now(), stream.peer_addr().unwrap());
 
     // send the network configuration
     // TODO -> Find a way to ask the electrum server what network is running
@@ -241,7 +241,7 @@ fn handle_client(mut stream: TcpStream) {
             Ok(s) => s,
             Err(_e) => {
                 // If error user has disconnected
-                println!("Client {} disconnected\n", stream.peer_addr().unwrap());
+                println!("{}: Client {} disconnected\n", Utc::now(), stream.peer_addr().unwrap());
                 return;
             },
         };
@@ -254,7 +254,7 @@ fn handle_client(mut stream: TcpStream) {
         if command_parts.len() > 2 {
             // If there's more than two arguments on the call something is worng.
             // Expected format: "add_tx raw_tx_data"
-            eprintln!("Client {} sent a command with wrong number of arguments: {}\n", stream.peer_addr().unwrap(), command_string.trim());
+            eprintln!("{}: Client {} sent a command with wrong number of arguments: {}\n", Utc::now(), stream.peer_addr().unwrap(), command_string.trim());
             stream.write(b"One or two arguments are expected\n").unwrap();
             continue;
         }
@@ -272,7 +272,7 @@ fn handle_client(mut stream: TcpStream) {
             "add_tx" => handle_addtx(arg, stream.try_clone().unwrap()),
             "get_groupsInfo" => handle_get_groups_info(stream.try_clone().unwrap()),
             _ => {
-                eprintln!("Client {} sent an unknown command: {}\n", stream.peer_addr().unwrap(), command);
+                eprintln!("{}: Client {} sent an unknown command: {}\n", Utc::now(), stream.peer_addr().unwrap(), command);
                 stream.write(b"Unknown command sent\n").unwrap();
             },
         }
@@ -321,7 +321,7 @@ fn main() {
         }
     });
 
-    println!("Server running on {}", endpoint);
+    println!("{}: Server running on {}", Utc::now(), endpoint);
     for stream in listener.incoming(){
         match stream {
             Ok(stream) => {
@@ -330,7 +330,7 @@ fn main() {
                 });
             }
             Err(e) => {
-                eprintln!("Unable to connect: {}", e);
+                eprintln!("{}: Unable to connect: {}", Utc::now(), e);
             }
         }
     }
