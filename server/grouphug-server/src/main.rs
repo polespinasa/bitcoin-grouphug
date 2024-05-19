@@ -279,7 +279,7 @@ fn handle_client(mut stream: TcpStream) {
     }
 }
 
-fn check_time(){
+fn close_group_by_time(){
     // Check that the creation timestamp of a group + the max_time (in secs) is lower than the actual time, if not, close the group
     let actual_time: i64 = Utc::now().timestamp();
 
@@ -315,9 +315,9 @@ fn main() {
     // Check if need to close groups because of time conditions every 30seconds
     thread::spawn(|| {
         loop {
-            check_time();
+            close_group_by_time();
             close_group_by_fee();
-            thread::sleep(Duration::from_secs(30));
+            thread::sleep(Duration::from_secs(60));
         }
     });
 
