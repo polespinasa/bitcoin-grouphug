@@ -12,10 +12,11 @@ use bdk::bitcoin::{
 };
 use bdk::electrum_client::{Client, ConfigBuilder, ElectrumApi};
 use bdk::blockchain::{ElectrumBlockchain, GetTx};
-
+use chrono::Utc;
 
 pub struct Group {
     pub fee_rate: f32,
+    pub timestamp: i64,
     transactions: Vec<(TxIn, TxOut)>,
     transaction_group: Transaction,
 
@@ -26,6 +27,7 @@ impl Group {
     pub fn new(fee_rate: f32) -> Self {
         Group {
             fee_rate,
+            timestamp: Utc::now().timestamp(),
             transactions: Vec::new(),
             transaction_group: Transaction {
                 version: 2,

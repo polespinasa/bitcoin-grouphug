@@ -9,6 +9,7 @@ use crate::server::group::Group;
 // External libraries
 use std::{
     thread,
+    time::Duration,
     io::{Read, Write},
     net::{TcpListener, TcpStream},
     str,
@@ -16,6 +17,7 @@ use std::{
     env,
     sync::{Arc, Mutex},
 };
+use chrono::Utc;
 use once_cell::sync::Lazy;
 use hex::decode as hex_decode;
 use bdk::bitcoin::{Transaction,consensus::encode::deserialize};
@@ -100,7 +102,7 @@ fn handle_get_groups_info(mut stream: TcpStream) {
     }
     else {
         for group in groups.iter() {
-            let msg = format!("Fee: {}, Size: {}/{}\n", group.fee_rate, group.get_num_transactions(), &crate::CONFIG.group.max_size);
+            let msg = format!("Fee: {}, Size: {}/{}, Timestamp: {}\n", group.fee_rate, group.get_num_transactions(), &crate::CONFIG.group.max_size, group.timestamp);
             stream.write(msg.as_bytes()).unwrap();
         }   
     }
@@ -277,7 +279,31 @@ fn handle_client(mut stream: TcpStream) {
     }
 }
 
+fn check_time(){
+    // Check that the creation timestamp of a group + the max_time (in secs) is lower than the actual time, if not, close the group
+    let actual_time: i64 = Utc::now().timestamp();
 
+    let mut groups = GLOBAL_GROUPS.lock().unwrap();
+
+    // Save the feerate as an Id to identify the groups closed
+    let mut groups_closed: Vec<f32> = Vec::new();
+    
+    for group in groups.iter_mut() {
+        if group.timestamp + &crate::CONFIG.group.max_time <= actual_time {
+            if group.close_group() {
+                groups_closed.push(group.fee_rate);
+            }  
+        }
+    }
+
+    // delete the closed groups from the group list 
+    for rate in groups_closed {
+        groups.retain(|g| g.fee_rate != rate);
+    }
+
+    return;
+
+}
 
 fn main() {
            
@@ -285,6 +311,14 @@ fn main() {
     let endpoint: String = format!("{}:{}", &crate::CONFIG.server.ip, &crate::CONFIG.server.port);
     
     let listener = TcpListener::bind(endpoint.clone()).unwrap();
+
+    // Check if need to close groups because of time conditions every 30seconds
+    thread::spawn(|| {
+        loop {
+            check_time();
+            thread::sleep(Duration::from_secs(30));
+        }
+    });
 
     println!("Server running on {}", endpoint);
     for stream in listener.incoming(){

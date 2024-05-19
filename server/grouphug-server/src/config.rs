@@ -18,7 +18,7 @@ pub struct Electrum {
 
 #[derive(Deserialize)]
 pub struct GroupConf {
-    pub max_time: usize,
+    pub max_time: i64,
     pub max_size: usize,
 }
 
