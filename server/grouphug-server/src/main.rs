@@ -205,7 +205,7 @@ fn handle_addtx(transaction: &str, mut stream: TcpStream) {
             groups.retain(|g| g.fee_rate != expected_group_fee);
         }
     }
-    close_group_by_fee();
+
     // Send an OK message if the tx was added successfuly
     stream.write(msg.as_bytes()).unwrap();
 
@@ -316,6 +316,7 @@ fn main() {
     thread::spawn(|| {
         loop {
             check_time();
+            close_group_by_fee();
             thread::sleep(Duration::from_secs(30));
         }
     });
