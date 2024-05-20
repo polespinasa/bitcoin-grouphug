@@ -67,7 +67,7 @@ The GroupHug provides a number of configurable parameters to modify its behavior
 `certificate_validation` -> Set to false if using self-signed certificates, will be necessary if your Electrum endpoint has SSL enabled with a self-signed certificate.
 
 #### Group
-`time` -> Time in seconds that a group can be running before it's closed (not implemented yet).
+`max_time` -> Time in seconds that a group can be running before it's closed.
 
 `max_size` -> Minimum group size for the group to be closed. If when adding a new transaction the number of inputs and outputs is greater than or equal to this parameter the group will be closed.
 
