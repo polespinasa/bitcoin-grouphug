@@ -1,3 +1,7 @@
+
+# ALERT
+This project is no longer maintained in this repo. For from now on the project continues from this other: [https://github.com/Bitcoin-GroupHug/bitcoin-grouphug](https://github.com/Bitcoin-GroupHug/bitcoin-grouphug)
+
 # Bitcoin GroupHug
 
 [![CI](https://github.com/polespinasa/bitcoin-grouphug/actions/workflows/ci.yml/badge.svg)](https://github.com/polespinasa/bitcoin-grouphug/actions/workflows/ci.yml)
