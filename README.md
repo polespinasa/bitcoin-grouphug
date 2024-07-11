@@ -1,6 +1,6 @@
 
 # ALERT
-This project is no longer maintained in this repo. For from now on the project continues from this other: [https://github.com/Bitcoin-GroupHug/bitcoin-grouphug](https://github.com/Bitcoin-GroupHug/bitcoin-grouphug)
+This project is no longer maintained in this repo. From now on the project continues here: [https://github.com/Bitcoin-GroupHug/bitcoin-grouphug](https://github.com/Bitcoin-GroupHug/bitcoin-grouphug)
 
 # Bitcoin GroupHug
 
